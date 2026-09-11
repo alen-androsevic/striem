@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QSize, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QLabel, QToolButton, QVBoxLayout, QWidget
 
@@ -119,9 +119,12 @@ class CameraTile(QWidget):
         if self._frozen_image is None:
             return
         self._frozen.setGeometry(self.rect())
+        ratio = self.devicePixelRatioF()
+        target = QSize(round(self.width() * ratio), round(self.height() * ratio))
         pixmap = QPixmap.fromImage(self._frozen_image).scaled(
-            self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+            target, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
+        pixmap.setDevicePixelRatio(ratio)
         self._frozen.setPixmap(pixmap)
 
     def _place_overlays(self) -> None:
