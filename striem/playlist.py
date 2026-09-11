@@ -17,7 +17,7 @@ class Camera:
 def load_cameras(folder: Path) -> tuple[list[Camera], list[tuple[Path, str]]]:
     """All cameras from the folder's .xspf files, plus (file, message) for files that failed.
 
-    Files are read in case-insensitive name order; a URL seen twice is kept once (first wins).
+    Files are read in case-insensitive name order; a URL seen twice is kept once (first wins, within or across files).
     """
     cameras: list[Camera] = []
     errors: list[tuple[Path, str]] = []
@@ -27,7 +27,7 @@ def load_cameras(folder: Path) -> tuple[list[Camera], list[tuple[Path, str]]]:
     for path in playlist_files(folder):
         try:
             found = parse_playlist(path)
-        except (ET.ParseError, OSError) as exc:
+        except (ET.ParseError, OSError, ValueError, LookupError) as exc:
             errors.append((path, str(exc)))
             continue
         for camera in found:

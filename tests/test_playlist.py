@@ -126,3 +126,23 @@ def test_only_xspf_files_are_read_and_extension_case_is_ignored(tmp_path):
 
 def test_missing_folder_gives_nothing(tmp_path):
     assert load_cameras(tmp_path / "nope") == ([], [])
+
+
+def test_unknown_encoding_is_reported_not_raised(tmp_path):
+    bad = tmp_path / "bad-enc.xspf"
+    bad.write_bytes(b'<?xml version="1.0" encoding="bogus-enc"?><playlist/>')
+    write(tmp_path, "good.xspf", playlist(track("rtsp://h/good", "Good")))
+    cameras, errors = load_cameras(tmp_path)
+    assert [c.name for c in cameras] == ["Good"]
+    assert [path for path, _ in errors] == [bad]
+    assert errors[0][1]
+
+
+def test_empty_file_is_reported_not_raised(tmp_path):
+    bad = tmp_path / "empty.xspf"
+    bad.write_bytes(b"")
+    write(tmp_path, "good.xspf", playlist(track("rtsp://h/good", "Good")))
+    cameras, errors = load_cameras(tmp_path)
+    assert [c.name for c in cameras] == ["Good"]
+    assert [path for path, _ in errors] == [bad]
+    assert errors[0][1]
