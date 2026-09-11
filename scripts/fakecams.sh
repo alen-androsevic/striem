@@ -8,7 +8,7 @@ src() {
   case "$1" in
     cam1) echo "testsrc=size=640x360:rate=25" ;;  # shows a running frame counter
     cam2) echo "smptehdbars=size=640x360:rate=25" ;;
-    cam3) echo "mandelbrot=size=640x360:rate=25" ;;
+    cam3) echo "cellauto=size=640x360:rate=25:rule=110:random_fill_ratio=0.5" ;;
     cam4) echo "life=size=640x360:rate=25:mold=10:ratio=0.5:death_color=#203040:life_color=#30c080" ;;
     *)    echo "rgbtestsrc=size=640x360:rate=25" ;;
   esac
