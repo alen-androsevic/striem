@@ -64,11 +64,25 @@ A camera is audible iff it is `active` and not `muted`.
 - When the active camera is removed (folder change), `active = none`.
 
 ### Stream settings (per mpv instance)
-`profile=low-latency`, `rtsp-transport=tcp`, `cache=no`, `hwdec=auto-safe`,
-`vo=libmpv`, `mute=yes` initially, `keep-open=no`, audio via PulseAudio.
+`profile=low-latency`, `rtsp-transport=tcp`, `cache=no`,
+`hwdec=auto-copy-safe`, `vo=libmpv`, `mute=yes` initially, `keep-open=yes`,
+audio via PulseAudio.
+
+- `keep-open=yes` makes mpv hold the last frame when a live stream drops.
+- Copy-back hwdec is used because direct VA-API interop through the libmpv
+  render API on Wayland needs a `wl_display` handle that PySide6 does not
+  readily expose.
+- python-mpv finds libmpv only through `ctypes.util.find_library('mpv')`, so
+  `player.py` answers that lookup with `/app/lib/libmpv.so.2` (Flatpak) or
+  `/opt/homebrew/lib/libmpv.dylib` (macOS dev) when present.
 
 ### Reconnect
-When a stream ends or errors, the tile keeps its last frame, overlays
+Signals, verified against mpv 0.41 with a local mediamtx:
+- a live stream that drops sets `eof-reached=True` (no `end-file` event)
+- a stream that cannot be reached emits `end-file` with `reason=error`
+- a successful (re)start emits `playback-restart`
+
+On either failure signal the tile keeps its last frame, overlays
 "Reconnecting in N s", and retries. Backoff: 2, 4, 8, 16, 30, 30… seconds;
 reset to 2 s once playback starts. Initial state shows "Connecting…". Each tile
 reconnects independently.
@@ -89,7 +103,7 @@ Choosing a folder saves it via `settings.py` and rescans.
 - libmpv built in the manifest with its dependencies (following Haruna's
   Flathub manifest as reference); `python-mpv` installed via pip module.
 - H.264/H.265 via the runtime's ffmpeg / codecs extension.
-- `finish-args`: `--share=network`, `--socket=wayland`,
+- `finish-args`: `--share=ipc` (X11 fallback), `--share=network`, `--socket=wayland`,
   `--socket=fallback-x11`, `--device=dri`, `--socket=pulseaudio`,
   `--filesystem=home:ro`.
 - Ships a `.desktop` file, an SVG icon and a metainfo file.
