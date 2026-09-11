@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "striem"
+version = "0.1.0"
+description = "Watch the RTSP camera streams listed in a folder of .xspf playlists"
+requires-python = ">=3.11"
+dependencies = ["PySide6>=6.8", "mpv>=1.0.8"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "PyYAML>=6"]
+
+[project.scripts]
+striem = "striem.__main__:main"
+
+[tool.setuptools]
+packages = ["striem"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
