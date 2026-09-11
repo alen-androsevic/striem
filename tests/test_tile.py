@@ -1,6 +1,6 @@
 import pytest
 
-from striem.player import MPV_OPTIONS
+from striem.player import CONNECT_TIMEOUT_S, MPV_OPTIONS
 from striem.tile import reconnect_delay
 
 
@@ -19,3 +19,7 @@ def test_mpv_options_match_spec():
         "keep_open": "yes",
         "mute": "yes",
     }
+
+
+def test_connect_timeout_matches_spec():
+    assert CONNECT_TIMEOUT_S == 10

@@ -9,7 +9,7 @@ from __future__ import annotations
 import ctypes.util
 import os
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QOpenGLContext
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
@@ -39,6 +39,8 @@ MPV_OPTIONS = {
     "mute": "yes",
 }
 
+CONNECT_TIMEOUT_S = 10
+
 
 def _get_proc_address(_ctx, name: bytes) -> int:
     context = QOpenGLContext.currentContext()
@@ -67,12 +69,16 @@ class MpvWidget(QOpenGLWidget):
         self._from_mpv.connect(self._relay)
         self._player.register_event_callback(self._on_mpv_event)
         self._player.observe_property("eof-reached", self._on_eof)
+        self._watchdog = QTimer(self)
+        self._watchdog.setSingleShot(True)
+        self._watchdog.setInterval(CONNECT_TIMEOUT_S * 1000)
+        self._watchdog.timeout.connect(self._on_watchdog)
 
     def play(self, url: str) -> None:
         """Start (or restart) the stream. Waits for the GL context if not shown yet."""
         self._url = url
         if self._render is not None and self._player is not None:
-            self._player.play(url)
+            self._start_playback()
 
     def set_muted(self, muted: bool) -> None:
         if self._player is not None:
@@ -82,6 +88,7 @@ class MpvWidget(QOpenGLWidget):
         """Release mpv. Call before the widget is destroyed; safe to call twice."""
         if self._player is None:
             return
+        self._watchdog.stop()
         if self._render is not None:
             self.makeCurrent()
             self._render.free()
@@ -98,7 +105,12 @@ class MpvWidget(QOpenGLWidget):
         )
         self._render.update_cb = self._frame_ready.emit
         if self._url:
-            self._player.play(self._url)
+            self._start_playback()
+
+    def _start_playback(self) -> None:
+        """The one place that starts a load: play the URL and (re)arm the watchdog."""
+        self._player.play(self._url)
+        self._watchdog.start()
 
     def paintGL(self) -> None:
         if self._render is None:
@@ -130,6 +142,12 @@ class MpvWidget(QOpenGLWidget):
 
     def _relay(self, kind: str, detail: str) -> None:
         if kind == "playing":
+            self._watchdog.stop()
             self.playing.emit()
         else:
+            self._watchdog.stop()
             self.failed.emit(detail)
+
+    def _on_watchdog(self) -> None:
+        if self._player is not None:
+            self.failed.emit(f"no video within {CONNECT_TIMEOUT_S} s")
