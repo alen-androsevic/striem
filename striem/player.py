@@ -65,7 +65,7 @@ class MpvWidget(QOpenGLWidget):
         self._url: str | None = None
         self._render = None
         self._player = mpv.MPV(**MPV_OPTIONS)
-        self._frame_ready.connect(self.update)
+        self._frame_ready.connect(self._on_frame_ready)
         self._from_mpv.connect(self._relay)
         self._player.register_event_callback(self._on_mpv_event)
         self._player.observe_property("eof-reached", self._on_eof)
@@ -115,15 +115,39 @@ class MpvWidget(QOpenGLWidget):
     def paintGL(self) -> None:
         if self._render is None:
             return
+        # Don't wait for the frame's display time: every tile paints on the one GUI
+        # thread, so a blocking render would make tiles wait on each other.
+        self._render.render(flip_y=True, block_for_target_time=False, opengl_fbo=self._fbo())
+
+    def _fbo(self) -> dict:
         ratio = self.devicePixelRatio()
-        self._render.render(
-            flip_y=True,
-            opengl_fbo={
-                "w": round(self.width() * ratio),
-                "h": round(self.height() * ratio),
-                "fbo": self.defaultFramebufferObject(),
-            },
-        )
+        return {
+            "w": round(self.width() * ratio),
+            "h": round(self.height() * ratio),
+            "fbo": self.defaultFramebufferObject(),
+        }
+
+    def _on_frame_ready(self) -> None:
+        """mpv has a new frame (GUI thread, queued from mpv's update callback)."""
+        if self.isVisible():
+            self.update()
+        else:
+            self._consume_hidden_frame()
+
+    def _consume_hidden_frame(self) -> None:
+        """A hidden widget is never painted, and mpv's libmpv output falls behind the
+        live stream while nobody takes its frames. Take each frame without drawing it
+        so the stream stays live and showing the tile again is instant."""
+        if self._render is None:
+            return
+        self.makeCurrent()
+        try:
+            if self._render.update():
+                self._render.render(
+                    skip_rendering=True, block_for_target_time=False, opengl_fbo=self._fbo()
+                )
+        finally:
+            self.doneCurrent()
 
     # mpv event thread -> GUI thread
 
