@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QLabel, QToolButton, QVBoxLayout, QWidget
 
 from striem.player import MpvWidget
@@ -37,6 +38,12 @@ class CameraTile(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.video)
+
+        self._frozen = QLabel(self)
+        self._frozen.setStyleSheet("background: black;")
+        self._frozen.setAlignment(Qt.AlignCenter)
+        self._frozen.hide()
+        self._frozen_image: QImage | None = None
 
         self._name = QLabel(camera.name, self)
         self._name.setStyleSheet(_OVERLAY_STYLE)
@@ -77,10 +84,18 @@ class CameraTile(QWidget):
         self._attempt = 0
         self._timer.stop()
         self._status.hide()
+        self._frozen.hide()
+        self._frozen_image = None
 
     def _on_failed(self, _reason: str) -> None:
         if self._timer.isActive():
             return
+        if self._frozen.isHidden():
+            self._frozen_image = self.video.grabFramebuffer()
+            self._update_frozen_pixmap()
+            self._frozen.show()
+            self._frozen.raise_()
+            self._place_overlays()
         self._countdown = reconnect_delay(self._attempt)
         self._attempt += 1
         self._show_status(f"Reconnecting in {self._countdown} s")
@@ -100,6 +115,15 @@ class CameraTile(QWidget):
         self._status.show()
         self._place_overlays()
 
+    def _update_frozen_pixmap(self) -> None:
+        if self._frozen_image is None:
+            return
+        self._frozen.setGeometry(self.rect())
+        pixmap = QPixmap.fromImage(self._frozen_image).scaled(
+            self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+        self._frozen.setPixmap(pixmap)
+
     def _place_overlays(self) -> None:
         for label in (self._name, self._status, self._audio):
             label.adjustSize()
@@ -113,6 +137,8 @@ class CameraTile(QWidget):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._place_overlays()
+        if not self._frozen.isHidden():
+            self._update_frozen_pixmap()
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton:
