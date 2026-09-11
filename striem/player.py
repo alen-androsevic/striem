@@ -64,7 +64,6 @@ class MpvWidget(QOpenGLWidget):
         super().__init__(parent)
         self._url: str | None = None
         self._render = None
-        self._was_hidden = False
         self._player = mpv.MPV(**MPV_OPTIONS)
         self._frame_ready.connect(self.update)
         self._from_mpv.connect(self._relay)
@@ -125,16 +124,6 @@ class MpvWidget(QOpenGLWidget):
                 "fbo": self.defaultFramebufferObject(),
             },
         )
-
-    def showEvent(self, event) -> None:
-        super().showEvent(event)
-        if self._url and self._render is not None and self._player is not None and self._was_hidden:
-            self._player.play(self._url)
-        self._was_hidden = False
-
-    def hideEvent(self, event) -> None:
-        super().hideEvent(event)
-        self._was_hidden = True
 
     # mpv event thread -> GUI thread
 
