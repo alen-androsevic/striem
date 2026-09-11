@@ -81,6 +81,12 @@ Signals, verified against mpv 0.41 with a local mediamtx:
 - a live stream that drops sets `eof-reached=True` (no `end-file` event)
 - a stream that cannot be reached emits `end-file` with `reason=error`
 - a successful (re)start emits `playback-restart`
+- a stream that opens but never delivers frames emits nothing at all
+  (measured: `file-loaded`, then silence for 75 s; `network-timeout` does not
+  cover it), so the player runs a connect watchdog: if `playback-restart` has
+  not arrived within 10 s of a (re)connect attempt, that attempt counts as
+  failed. Streams that stall mid-playback without EOF are not detected
+  (known limitation).
 
 On either failure signal the tile keeps its last frame, overlays
 "Reconnecting in N s", and retries. Backoff: 2, 4, 8, 16, 30, 30… seconds;
