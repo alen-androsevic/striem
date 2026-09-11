@@ -1,0 +1,99 @@
+id: io.github.striem.Striem
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
+base: io.qt.PySide.BaseApp
+base-version: '6.11'
+command: striem
+
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --socket=pulseaudio
+  - --filesystem=home:ro
+
+build-options:
+  env:
+    BASEAPP_REMOVE_WEBENGINE: '1'
+    BASEAPP_DISABLE_NUMPY: '1'
+
+cleanup-commands:
+  - /app/cleanup-BaseApp.sh
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/cmake
+  - /share/man
+  - /share/doc
+  - '*.a'
+  - '*.la'
+
+modules:
+  - name: libplacebo
+    buildsystem: meson
+    config-opts:
+      - -Ddemos=false
+    sources:
+      - type: git
+        url: https://github.com/haasn/libplacebo.git
+        tag: v7.360.1
+        commit: cee9b076f2c63104ccfd497fa79c39a867293ec4
+
+  - name: libass
+    config-opts:
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://github.com/libass/libass/releases/download/0.17.5/libass-0.17.5.tar.gz
+        sha256: caab4b993dd7be6187c55623b789ed75dddefea6e65938af134637c732fe094a
+
+  - name: libmpv
+    buildsystem: meson
+    config-opts:
+      - -Dlibmpv=true
+      - -Dcplayer=false
+      - -Dlua=disabled
+      - -Djavascript=disabled
+      - -Dx11=disabled
+      - -Duchardet=disabled
+      - -Dlibarchive=disabled
+      - -Dalsa=disabled
+      - -Dmanpage-build=disabled
+      - -Dbuild-date=false
+    sources:
+      - type: archive
+        url: https://github.com/mpv-player/mpv/archive/refs/tags/v0.41.0.tar.gz
+        sha256: ee21092a5ee427353392360929dc64645c54479aefdb5babc5cfbb5fad626209
+
+  - name: python-mpv
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-index --no-deps --no-build-isolation --prefix=${FLATPAK_DEST} mpv-1.0.8-py3-none-any.whl
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/f4/cf/0d5f52753366ecf2c3d763e331dcda54b0f20a1a8e52b175feb9c625399d/mpv-1.0.8-py3-none-any.whl
+        sha256: dcf77f612e3f5ce49bd89393f37d286de7ac290db6b0800f1fdcfe0aeb5ba9b8
+
+  - name: striem
+    buildsystem: simple
+    build-commands:
+      - install -d ${FLATPAK_DEST}/share/striem
+      - cp -r striem ${FLATPAK_DEST}/share/striem/
+      - install -Dm755 flatpak/striem.sh ${FLATPAK_DEST}/bin/striem
+      - install -Dm644 flatpak/io.github.striem.Striem.desktop -t ${FLATPAK_DEST}/share/applications
+      - install -Dm644 flatpak/io.github.striem.Striem.svg -t ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps
+      - install -Dm644 flatpak/io.github.striem.Striem.metainfo.xml -t ${FLATPAK_DEST}/share/metainfo
+    sources:
+      - type: dir
+        path: ..
+        skip:
+          - .venv
+          - .git
+          - .flatpak-builder
+          - build-dir
+          - .pytest_cache
+          - shots

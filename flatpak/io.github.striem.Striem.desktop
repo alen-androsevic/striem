@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Striem
+Comment=Watch your home camera streams
+Exec=striem
+Icon=io.github.striem.Striem
+Categories=AudioVideo;Video;Player;
+Terminal=false
