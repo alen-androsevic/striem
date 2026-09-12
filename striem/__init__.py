@@ -3,4 +3,4 @@
 # The Flatpak copies this package in rather than pip-installing it, so there is
 # no package metadata to read the version from. A test keeps this in step with
 # pyproject.toml and the AppStream metainfo.
-__version__ = "0.1.3"
+__version__ = "0.1.4"
