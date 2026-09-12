@@ -146,6 +146,35 @@ class MainWindow(QMainWindow):
         self._report_capture(saved, skipped, folder)
         return saved
 
+    def clip(self) -> list[Path]:
+        """Save the buffered last seconds of the focused camera, or of every camera."""
+        targets = capture_targets(self._cameras, self._focused)
+        if not targets:
+            self.statusBar().showMessage("No cameras to clip", 5000)
+            return []
+        folder = self._settings.capture_folder()
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self.statusBar().showMessage(f"Could not save to {_pretty(folder)}: {exc}", 5000)
+            return []
+        seconds = self._settings.clip_seconds()
+        # One timestamp for the whole burst, so a grid clip groups together.
+        when = datetime.now()
+        saved: list[Path] = []
+        longest = 0.0
+        for camera in targets:
+            tile = self._tiles.get(camera.url)
+            if tile is None:
+                continue
+            path = capture_path(folder, camera.name, when, ".mkv")
+            written = tile.clip_to(path, seconds)
+            if written > 0:
+                saved.append(path)
+                longest = max(longest, written)
+        self._report_clip(saved, longest, folder)
+        return saved
+
     def tiles(self) -> list[CameraTile]:
         return [self._tiles[c.url] for c in self._cameras]
 
@@ -163,6 +192,9 @@ class MainWindow(QMainWindow):
         self._capture_action = QAction("Capture", self)
         self._capture_action.setToolTip("Save a frame from the cameras on screen (S)")
         self._capture_action.triggered.connect(self.capture)
+        self._clip_action = QAction("Clip", self)
+        self._clip_action.setToolTip("Save the buffered last seconds (C)")
+        self._clip_action.triggered.connect(self.clip)
         self._folder_action = QAction("Choose folder…", self)
         self._folder_action.triggered.connect(self._choose_folder)
         self._capture_folder_action = QAction("Capture folder…", self)
@@ -173,6 +205,7 @@ class MainWindow(QMainWindow):
         self._camera_anchor = self._toolbar.addSeparator()
         self._toolbar.addWidget(spacer)
         self._toolbar.addAction(self._capture_action)
+        self._toolbar.addAction(self._clip_action)
         self._toolbar.addAction(self._mute_action)
         self._toolbar.addAction(self._folder_action)
         self._toolbar.addAction(self._capture_folder_action)
@@ -206,6 +239,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Esc"), self, activated=self.show_grid)
         QShortcut(QKeySequence("M"), self, activated=self.toggle_mute)
         QShortcut(QKeySequence("S"), self, activated=self.capture)
+        QShortcut(QKeySequence("C"), self, activated=self.clip)
         QShortcut(QKeySequence("F11"), self, activated=self._toggle_fullscreen)
 
     # Keeping the UI in sync
@@ -269,6 +303,15 @@ class MainWindow(QMainWindow):
         what = saved[0].name if len(saved) == 1 else f"{len(saved)} frames"
         note = f" ({skipped} not playing)" if skipped else ""
         self.statusBar().showMessage(f"Saved {what} to {_pretty(folder)}{note}", 5000)
+
+    def _report_clip(self, saved: list[Path], seconds: float, folder: Path) -> None:
+        # Reports the duration actually written, not the length requested: the
+        # buffer is sized in bytes, so it may not reach back the full N seconds.
+        if not saved:
+            self.statusBar().showMessage("Nothing buffered to clip yet", 5000)
+            return
+        what = saved[0].name if len(saved) == 1 else f"{len(saved)} clips"
+        self.statusBar().showMessage(f"Saved {what} ({seconds:.0f}s) to {_pretty(folder)}", 5000)
 
     def _show_errors(self, errors: list[tuple[Path, str]]) -> None:
         if errors:

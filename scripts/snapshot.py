@@ -1,7 +1,7 @@
 """Dev tool: run Striem on a folder, drive it with scripted steps, save screenshots.
 
 Usage: .venv/bin/python scripts/snapshot.py --folder DIR --out DIR STEP...
-Steps: wait:SECONDS  shot:NAME  focus:N  grid  audio:N  mute  state  capture   (N is 1-based)
+Steps: wait:SECONDS  shot:NAME  focus:N  grid  audio:N  mute  state  capture  clip   (N is 1-based)
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ class FixedFolder:
     def __init__(self, folder: Path, captures: Path):
         self._folder = folder
         self._captures = captures
+        self._clip_seconds = 30
 
     def folder(self) -> Path:
         return self._folder
@@ -33,6 +34,12 @@ class FixedFolder:
 
     def set_capture_folder(self, folder: Path) -> None:
         self._captures = folder
+
+    def clip_seconds(self) -> int:
+        return self._clip_seconds
+
+    def set_clip_seconds(self, seconds: int) -> None:
+        self._clip_seconds = seconds
 
 
 def main() -> int:
@@ -75,6 +82,9 @@ def main() -> int:
         elif command == "capture":
             for path in window.capture():
                 print("captured", path, flush=True)
+        elif command == "clip":
+            for path in window.clip():
+                print("clipped", path, flush=True)
         elif command == "state":
             for tile in window.tiles():
                 print(
