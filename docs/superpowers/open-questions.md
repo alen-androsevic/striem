@@ -9,9 +9,17 @@ Last updated: 2026-09-12, after finishing the clips and recording work.
 
 ## Where things stand
 
-All twelve tasks in the clips and recording plan are implemented, verified and
-committed on `feat/camera-clips`. Nothing is pushed. The test suite is at 105
-passing.
+Both features are implemented, verified and merged. `feat/camera-clips` was
+fast-forwarded into `feat/camera-capture` and then deleted, so everything now
+sits on `feat/camera-capture`: 17 commits ahead of `next`, clean tree, 105 tests
+passing on the merged result.
+
+One correction, because this file said the opposite earlier and you would have
+read it cold: `feat/camera-capture` **is** on the remote, at commit 5d659e5 (the
+still capture). I never pushed in this session and do not know when it got there.
+Your local branch is 16 commits ahead of that ref and nothing has diverged, so
+the merge was safe — but I had asserted "nothing is pushed" without checking it,
+which was harmless here and would not always be.
 
 Verified by actually running it against the fake cameras, not by reasoning:
 
@@ -65,10 +73,11 @@ you a shorter clip above that. The app reports the duration it actually wrote,
 so it will never lie to you — but if your cameras are high-bitrate, say the word
 and I will raise the buffer.
 
-### 3. Branch strategy
+### 3. Branch strategy — resolved, merged locally
 
-Nothing is pushed. The branches are stacked because the clips work modifies the
-capture work's code:
+You chose to merge locally. `feat/camera-clips` fast-forwarded into
+`feat/camera-capture` and was then deleted, with the tests verified green on the
+merged result before the branch went away. The stack that used to exist was:
 
 ```
 next
@@ -76,21 +85,18 @@ next
       └── feat/camera-clips  clips and recording
 ```
 
-Options: two stacked PRs in order, or squash both into one. I defaulted to
-keeping them separate, since they are separately reviewable features. Tell me if
-you want them combined, or want the capture PR opened now.
+There is now one branch rather than two. What is left is whether
+`feat/camera-capture` goes into `next`, as a pull request or a local merge, and
+whether it gets pushed: the remote copy of that branch is still at 5d659e5, 16
+commits behind your local one. I have pushed nothing.
 
-### 4. How do you want this integrated?
+### 4. How do you want this integrated? — partly resolved
 
-Both features are finished and committed, and nothing is pushed. I deliberately
-did not merge or open a PR: pushing is outward-facing and merging into a base
-branch is awkward to undo, so that decision is yours even though you said to keep
-working. The options are to merge locally into the base, to push and open pull
-requests, or to leave the branches sitting as they are.
+You picked "merge back locally", and that is done. No push and no pull request,
+because neither was chosen and both are decisions I should not take for you.
 
-My suggestion, if you want one: open the capture PR first and let the clips PR
-follow it, since the second genuinely builds on the first and reviewing them in
-that order is much easier than reading them together.
+Still open: getting `feat/camera-capture` into `next`, and whether to push it.
+The remote copy of that branch is 16 commits behind your local one.
 
 ### 5. Are `C` and `R` the right keys?
 
