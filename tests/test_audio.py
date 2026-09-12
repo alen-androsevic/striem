@@ -64,6 +64,39 @@ def test_toggle_on_active_but_muted_camera_unmutes_it():
     assert audible(s, A, B) == [A]
 
 
+def test_silence_makes_nothing_audible():
+    s = AudioState()
+    s.focus(A)
+    s.silence()
+    assert audible(s, A, B) == []
+    assert s.active is None
+
+
+def test_silence_clears_a_pending_mute():
+    # With no active camera the M toggle describes nothing, so it resets too.
+    s = AudioState()
+    s.focus(A)
+    s.toggle_mute()
+    s.silence()
+    assert s.muted is False
+    assert audible(s, A, B) == []
+
+
+def test_silence_without_active_camera_is_harmless():
+    s = AudioState()
+    s.silence()
+    assert s.active is None
+    assert audible(s, A, B) == []
+
+
+def test_camera_can_be_unmuted_again_after_silence():
+    s = AudioState()
+    s.focus(A)
+    s.silence()
+    s.toggle(A)
+    assert audible(s, A, B) == [A]
+
+
 def test_forget_active_camera_clears_it():
     s = AudioState()
     s.toggle(A)

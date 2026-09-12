@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, next]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -34,6 +34,9 @@ jobs:
 
   bundle:
     name: Flatpak bundle
+    # Six minutes a run, so it builds only where the result is worth having:
+    # merges into main or next, and release tags. Never per pull-request commit.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     container:
       # Pre-seeded flatpak-builder image. Its KDE version only warms the cache:
@@ -52,7 +55,7 @@ jobs:
           cache-key: flatpak-builder-${{ hashFiles('flatpak/io.github.striem.Striem.yml') }}
 
   release:
-    name: Attach bundle to release
+    name: Stable release
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [tests, bundle]
     runs-on: ubuntu-latest
@@ -63,11 +66,60 @@ jobs:
         with:
           name: striem-flatpak
 
-      - name: Create release
+      - name: Publish stable release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cat > notes.md <<'EOF'
+          Download `striem.flatpak` below, then install it:
+
+          ```sh
+          flatpak install --user striem.flatpak
+          ```
+          EOF
+          printf '\nWant fixes before they are released? Nightly builds from `next`: https://github.com/%s/releases/tag/nightly\n' \
+            "$GITHUB_REPOSITORY" >> notes.md
           gh release create "$GITHUB_REF_NAME" striem.flatpak \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
-            --notes 'Download `striem.flatpak` below, then install it with `flatpak install --user striem.flatpak`.'
+            --notes-file notes.md
+
+  nightly:
+    name: Nightly release
+    if: github.ref == 'refs/heads/next'
+    needs: [tests, bundle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: striem-flatpak
+
+      # One rolling release on a reused tag: delete it, then recreate it at this
+      # commit. --prerelease keeps the newest stable holding the "Latest" badge,
+      # so the Releases page still defaults people to stable.
+      - name: Publish rolling nightly
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mv striem.flatpak striem-nightly.flatpak
+          cat > notes.md <<'EOF'
+          Unstable rolling build from `next`, replaced on every merge.
+
+          ```sh
+          flatpak install --user striem-nightly.flatpak
+          ```
+
+          Shares an app ID with stable, so installing this replaces a stable
+          install and vice versa.
+          EOF
+          printf '\nBuilt from %s\n\nLatest stable release: https://github.com/%s/releases/latest\n' \
+            "$GITHUB_SHA" "$GITHUB_REPOSITORY" >> notes.md
+          gh release delete nightly --yes --cleanup-tag || true
+          gh release create nightly striem-nightly.flatpak \
+            --repo "$GITHUB_REPOSITORY" \
+            --title Nightly \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --notes-file notes.md

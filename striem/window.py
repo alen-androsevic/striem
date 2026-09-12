@@ -92,8 +92,14 @@ class MainWindow(QMainWindow):
             self._focus(self._cameras[index].url)
 
     def show_grid(self) -> None:
+        # Only when leaving focus: Esc in the grid must not silence a camera
+        # the user unmuted with its speaker button.
+        if self._focused is None:
+            return
         self._focused = None
+        self._audio.silence()
         self._relayout()
+        self._apply_audio()
 
     def toggle_audio_index(self, index: int) -> None:
         if 0 <= index < len(self._cameras):
