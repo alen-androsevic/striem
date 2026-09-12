@@ -123,7 +123,7 @@ def test_install_script_covers_both_channels():
     # host and /releases prefix sit in a variable, so match from the path on.
     assert "/releases" in text
     assert "/latest/download/striem.flatpak" in text
-    assert "/download/nightly/striem-nightly.flatpak" in text
+    assert "/download/nightly-rolling/striem-nightly.flatpak" in text
     assert "flatpak install --user" in text
 
 
@@ -139,14 +139,16 @@ def test_release_channels_are_wired_to_their_branches():
     # never "Latest", so the Releases page keeps defaulting people to stable.
     # The job has no checkout, so gh cannot infer the repo from git — every call
     # needs --repo. A missing one silently stranded a stale nightly once.
-    assert 'gh release view nightly --repo "$GITHUB_REPOSITORY"' in nightly
-    assert 'gh release delete nightly --yes --repo "$GITHUB_REPOSITORY"' in nightly
-    assert "/git/refs/tags/nightly" in nightly
+    # The tag is nightly-rolling: GitHub permanently blocks re-creating a ref
+    # whose name was held by an immutable release, so "nightly" is burned.
+    assert 'gh release view nightly-rolling --repo "$GITHUB_REPOSITORY"' in nightly
+    assert 'gh release delete nightly-rolling --yes --repo "$GITHUB_REPOSITORY"' in nightly
+    assert "/git/refs/tags/nightly-rolling" in nightly
     assert "--prerelease" in nightly
     assert "striem-nightly.flatpak" in nightly
     assert "--prerelease" not in stable
     # Either release page can send you to the other channel.
-    assert "releases/tag/nightly" in stable
+    assert "releases/tag/nightly-rolling" in stable
     assert "releases/latest" in nightly
 
 
