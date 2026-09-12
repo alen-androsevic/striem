@@ -50,3 +50,13 @@ def test_capture_path_steps_past_a_file_already_on_disk(tmp_path):
     when = datetime(2026, 9, 12, 14, 30, 5)
     (tmp_path / "2026-09-12_143005_Cam.png").touch()
     assert capture_path(tmp_path, "Cam", when) == tmp_path / "2026-09-12_143005_Cam-2.png"
+
+
+def test_filename_takes_an_extension():
+    when = datetime(2026, 9, 12, 14, 30, 5)
+    assert capture_filename("Front Door", when, ".mkv") == "2026-09-12_143005_Front-Door.mkv"
+
+
+def test_capture_path_carries_the_extension(tmp_path):
+    when = datetime(2026, 9, 12, 14, 30, 5)
+    assert capture_path(tmp_path, "Cam", when, ".mkv") == tmp_path / "2026-09-12_143005_Cam.mkv"
