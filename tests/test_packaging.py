@@ -1,6 +1,8 @@
 import configparser
 import os
+import tomllib
 from pathlib import Path
+from xml.etree import ElementTree
 
 import yaml
 
@@ -96,6 +98,42 @@ def test_ci_workflow_bundles_the_same_manifest():
     assert step["uses"].startswith("flatpak/flatpak-github-actions/flatpak-builder@")
     assert step["with"]["manifest-path"] == f"flatpak/{APP_ID}.yml"
     assert step["with"]["bundle"] == "striem.flatpak"
+
+
+def test_bundle_builds_only_on_integration_branches():
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    # YAML 1.1 reads a bare `on:` key as the boolean True, not the string "on".
+    assert workflow[True]["push"]["branches"] == ["main", "next"]
+    assert workflow["jobs"]["bundle"]["if"] == "github.event_name != 'pull_request'"
+    # Tests are cheap and stay on every pull-request commit.
+    assert "if" not in workflow["jobs"]["tests"]
+
+
+def test_release_channels_are_wired_to_their_branches():
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    jobs = workflow["jobs"]
+    assert jobs["release"]["if"] == "startsWith(github.ref, 'refs/tags/v')"
+    assert jobs["nightly"]["if"] == "github.ref == 'refs/heads/next'"
+
+    stable = jobs["release"]["steps"][-1]["run"]
+    nightly = jobs["nightly"]["steps"][-1]["run"]
+    # The nightly is one rolling release: deleted and recreated each merge, and
+    # never "Latest", so the Releases page keeps defaulting people to stable.
+    assert "--cleanup-tag" in nightly
+    assert "--prerelease" in nightly
+    assert "striem-nightly.flatpak" in nightly
+    assert "--prerelease" not in stable
+    # Either release page can send you to the other channel.
+    assert "releases/tag/nightly" in stable
+    assert "releases/latest" in nightly
+
+
+def test_metainfo_records_the_shipping_version():
+    version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    releases = ElementTree.parse(FLATPAK / f"{APP_ID}.metainfo.xml").getroot().find("releases")
+    # Software centres read this file. It silently drifted through v0.1.1, so
+    # the newest entry has to match what pyproject says we are shipping.
+    assert releases[0].get("version") == version
 
 
 def test_bundle_artifacts_are_ignored():

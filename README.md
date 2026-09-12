@@ -6,11 +6,21 @@ Watch the RTSP camera streams listed in a folder of `.xspf` playlists — all at
 
 Flatpak is Linux-only; there is no macOS build path.
 
-Install a bundle someone handed you:
+**Stable** — start here:
 
 ```sh
+curl -LO https://github.com/alen-androsevic/striem/releases/latest/download/striem.flatpak
 flatpak install --user striem.flatpak
 ```
+
+**Nightly** — rebuilt from `next` on every merge, for trying fixes before they are released:
+
+```sh
+curl -LO https://github.com/alen-androsevic/striem/releases/download/nightly/striem-nightly.flatpak
+flatpak install --user striem-nightly.flatpak
+```
+
+Both channels share one app ID, so installing either replaces the other — choose a channel per machine, and switch by installing the other file. Those two URLs always point at the current build, so they are safe to bookmark.
 
 Or build it from source:
 
@@ -35,13 +45,22 @@ To update, install a newer bundle or rebuild: either one replaces the installed 
 
 This writes `striem.flatpak`, a single file that needs no source checkout and no build toolchain on their machine. Build it on the architecture they run (x86_64 for a Bazzite PC) — a bundle will not install on a different one.
 
-Or let CI build it, which is the only option if you have no Linux machine:
+Or let CI build it, which is the only option if you have no Linux machine.
+
+## Releasing
+
+| Channel | Trigger | Result |
+|---|---|---|
+| Nightly | Merge into `next` | Replaces the single rolling `nightly` pre-release |
+| Stable | Push a `v*` tag | New release, becomes "Latest" |
 
 ```sh
-git tag v0.1.1 && git push origin v0.1.1
+git tag v0.1.2 && git push origin v0.1.2
 ```
 
-GitHub Actions builds the x86_64 bundle and attaches it to a release, so they can download `striem.flatpak` from the Releases page. Every push to `main` builds one too, downloadable from that run's Artifacts.
+GitHub Actions builds the x86_64 bundle and attaches it, so nobody needs a Linux machine or a toolchain. Nightlies are marked as pre-releases, which is what keeps the newest stable release the one GitHub shows by default. Each release links to the other channel.
+
+Pull requests run the tests only — the six-minute Flatpak build is reserved for `main`, `next` and tags.
 
 ## Use
 
