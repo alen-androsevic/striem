@@ -116,7 +116,17 @@ jobs:
           EOF
           printf '\nBuilt from %s\n\nLatest stable release: https://github.com/%s/releases/latest\n' \
             "$GITHUB_SHA" "$GITHUB_REPOSITORY" >> notes.md
-          gh release delete nightly --yes --cleanup-tag || true
+          # This job never checks out the repo, so every gh call needs --repo:
+          # without it gh tries to infer the repository from git and fails. Drop
+          # the release and its tag explicitly so create can re-point the tag at
+          # this commit. No blanket "|| true" — a swallowed delete is what let a
+          # stale nightly survive once already.
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete nightly --yes --repo "$GITHUB_REPOSITORY"
+          fi
+          # A tag can outlive its release; if this leaves one behind, create fails
+          # loudly rather than quietly publishing against the wrong commit.
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" >/dev/null 2>&1 || true
           gh release create nightly striem-nightly.flatpak \
             --repo "$GITHUB_REPOSITORY" \
             --title Nightly \

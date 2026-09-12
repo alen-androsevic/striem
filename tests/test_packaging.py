@@ -119,7 +119,11 @@ def test_release_channels_are_wired_to_their_branches():
     nightly = jobs["nightly"]["steps"][-1]["run"]
     # The nightly is one rolling release: deleted and recreated each merge, and
     # never "Latest", so the Releases page keeps defaulting people to stable.
-    assert "--cleanup-tag" in nightly
+    # The job has no checkout, so gh cannot infer the repo from git — every call
+    # needs --repo. A missing one silently stranded a stale nightly once.
+    assert 'gh release view nightly --repo "$GITHUB_REPOSITORY"' in nightly
+    assert 'gh release delete nightly --yes --repo "$GITHUB_REPOSITORY"' in nightly
+    assert "/git/refs/tags/nightly" in nightly
     assert "--prerelease" in nightly
     assert "striem-nightly.flatpak" in nightly
     assert "--prerelease" not in stable
