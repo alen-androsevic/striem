@@ -7,7 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import QSettings
 
 DEFAULT_FOLDER = Path.home() / "Videos" / "Cameras"
-DEFAULT_CAPTURE_FOLDER = Path.home() / "Pictures" / "Striem"
+DEFAULT_CAPTURE_FOLDER = Path.home() / "Videos" / "Striem"
 
 
 class Settings:

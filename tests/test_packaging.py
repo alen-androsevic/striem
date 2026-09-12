@@ -46,7 +46,7 @@ def test_manifest_permissions():
         "--device=dri",
         "--socket=pulseaudio",
         "--filesystem=home:ro",
-        "--filesystem=xdg-pictures:create",
+        "--filesystem=xdg-videos/Striem:create",
     }
 
 
