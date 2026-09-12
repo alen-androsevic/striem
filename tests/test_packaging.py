@@ -6,6 +6,8 @@ from xml.etree import ElementTree
 
 import yaml
 
+import striem
+
 ROOT = Path(__file__).resolve().parents[1]
 FLATPAK = ROOT / "flatpak"
 APP_ID = "io.github.striem.Striem"
@@ -145,18 +147,35 @@ def test_release_channels_are_wired_to_their_branches():
     assert "releases/latest" in nightly
 
 
+def test_ci_stamps_the_release_channel():
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    steps = workflow["jobs"]["bundle"]["steps"]
+    stamp = next(s for s in steps if "CHANNEL" in s.get("run", ""))
+    # One manifest builds both channels, so only the ref distinguishes them.
+    assert "refs/tags/v*) echo stable" in stamp["run"]
+    assert "refs/heads/next) echo nightly" in stamp["run"]
+    assert "striem/CHANNEL" in stamp["run"]
+    # It has to run before the bundle is built, or the file misses the copy.
+    assert steps.index(stamp) < len(steps) - 1
+
+
 def test_metainfo_records_the_shipping_version():
     version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     releases = ElementTree.parse(FLATPAK / f"{APP_ID}.metainfo.xml").getroot().find("releases")
     # Software centres read this file. It silently drifted through v0.1.1, so
     # the newest entry has to match what pyproject says we are shipping.
     assert releases[0].get("version") == version
+    # The title bar reads __version__, and the Flatpak copies the package in
+    # rather than pip-installing it, so there is no metadata to fall back on.
+    assert striem.__version__ == version
 
 
 def test_bundle_artifacts_are_ignored():
     ignored = (ROOT / ".gitignore").read_text().split()
     assert "repo/" in ignored
     assert "striem.flatpak" in ignored
+    # CI writes this into the package at build time; never commit it.
+    assert "striem/CHANNEL" in ignored
 
 
 def test_pycache_removed_before_copy():
