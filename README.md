@@ -16,7 +16,7 @@ flatpak install --user striem.flatpak
 **Nightly** — rebuilt from `next` on every merge, for trying fixes before they are released:
 
 ```sh
-curl -LO https://github.com/alen-androsevic/striem/releases/download/nightly/striem-nightly.flatpak
+curl -LO https://github.com/alen-androsevic/striem/releases/download/nightly-rolling/striem-nightly.flatpak
 flatpak install --user striem-nightly.flatpak
 ```
 

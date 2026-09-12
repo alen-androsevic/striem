@@ -16,7 +16,7 @@ case ${1-} in
     ;;
   --nightly)
     file=striem-nightly.flatpak
-    url=$RELEASES/download/nightly/striem-nightly.flatpak
+    url=$RELEASES/download/nightly-rolling/striem-nightly.flatpak
     ;;
   *)
     echo "usage: $0 [--nightly]" >&2
