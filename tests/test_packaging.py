@@ -109,6 +109,19 @@ def test_bundle_builds_only_on_integration_branches():
     assert "if" not in workflow["jobs"]["tests"]
 
 
+def test_install_script_covers_both_channels():
+    script = ROOT / "install.sh"
+    text = script.read_text()
+    assert os.access(script, os.X_OK)
+    assert "--nightly" in text
+    # Both permanent paths, so a release never means editing this script. The
+    # host and /releases prefix sit in a variable, so match from the path on.
+    assert "/releases" in text
+    assert "/latest/download/striem.flatpak" in text
+    assert "/download/nightly/striem-nightly.flatpak" in text
+    assert "flatpak install --user" in text
+
+
 def test_release_channels_are_wired_to_their_branches():
     workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
     jobs = workflow["jobs"]
