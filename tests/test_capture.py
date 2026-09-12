@@ -1,7 +1,13 @@
 from datetime import datetime
 from pathlib import Path
 
-from striem.capture import capture_filename, capture_path, capture_targets, unique_filename
+from striem.capture import (
+    capture_filename,
+    capture_path,
+    capture_targets,
+    recording_filename,
+    unique_filename,
+)
 from striem.playlist import Camera
 
 
@@ -60,3 +66,14 @@ def test_filename_takes_an_extension():
 def test_capture_path_carries_the_extension(tmp_path):
     when = datetime(2026, 9, 12, 14, 30, 5)
     assert capture_path(tmp_path, "Cam", when, ".mkv") == tmp_path / "2026-09-12_143005_Cam.mkv"
+
+
+def test_recording_filename_marks_a_recording():
+    when = datetime(2026, 9, 12, 14, 30, 5)
+    assert recording_filename("Front Door", when) == "2026-09-12_143005_Front-Door-rec.mkv"
+
+
+def test_recording_filename_numbers_later_parts():
+    when = datetime(2026, 9, 12, 14, 30, 5)
+    assert recording_filename("Cam", when, part=2) == "2026-09-12_143005_Cam-rec2.mkv"
+    assert recording_filename("Cam", when, part=3) == "2026-09-12_143005_Cam-rec3.mkv"

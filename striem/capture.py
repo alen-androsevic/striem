@@ -19,6 +19,17 @@ def capture_filename(camera_name: str, when: datetime, extension: str = ".png") 
     return f"{stamp}_{safe}{extension}"
 
 
+def recording_filename(camera_name: str, when: datetime, part: int = 1) -> str:
+    """Name for a forward recording, marked apart from a clip.
+
+    Parts after the first are numbered because mpv overwrites its stream-record
+    target: a stream that drops mid-recording has to resume into a new file
+    rather than destroying what was already captured.
+    """
+    marker = "-rec" if part == 1 else f"-rec{part}"
+    return capture_filename(camera_name, when, f"{marker}.mkv")
+
+
 def unique_filename(name: str, taken: Callable[[str], bool]) -> str:
     """`name`, or the first `-2`, `-3`… variant that `taken` does not claim.
 
