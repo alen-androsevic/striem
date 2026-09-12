@@ -1,7 +1,7 @@
 """Dev tool: run Striem on a folder, drive it with scripted steps, save screenshots.
 
 Usage: .venv/bin/python scripts/snapshot.py --folder DIR --out DIR STEP...
-Steps: wait:SECONDS  shot:NAME  focus:N  grid  audio:N  mute  state  capture  clip   (N is 1-based)
+Steps: wait:SECONDS  shot:NAME  focus:N  grid  audio:N  mute  state  capture  clip  record   (N is 1-based)
 """
 
 from __future__ import annotations
@@ -85,6 +85,8 @@ def main() -> int:
         elif command == "clip":
             for path in window.clip():
                 print("clipped", path, flush=True)
+        elif command == "record":
+            print("recording:", window.toggle_recording(), flush=True)
         elif command == "state":
             for tile in window.tiles():
                 print(

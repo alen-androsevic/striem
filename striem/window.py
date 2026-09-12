@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from striem.audio import AudioState
-from striem.capture import capture_path, capture_targets
+from striem.capture import capture_path, capture_targets, recording_filename, unique_filename
 from striem.egg import BONUS_CAMERA, CodeDetector
 from striem.layout import diff_cameras, grid_dims
 from striem.playlist import Camera, load_cameras
@@ -47,6 +47,8 @@ class MainWindow(QMainWindow):
         self._cameras: list[Camera] = []
         self._tiles: dict[str, CameraTile] = {}
         self._focused: str | None = None
+        # Frozen when recording starts; navigation never rewrites it.
+        self._recording: list[Camera] = []
         self._audio = AudioState()
         self._camera_actions: list[QAction] = []
         self._bonus: list[Camera] = []
@@ -78,6 +80,9 @@ class MainWindow(QMainWindow):
             self._audio.forget(camera.url)
             if self._focused == camera.url:
                 self._focused = None
+            # Its tile is about to be destroyed, so drop it from the locked set;
+            # otherwise a later stop would address a tile that no longer exists.
+            self._recording = [c for c in self._recording if c.url != camera.url]
             self._grid.removeWidget(tile)
             tile.shutdown()
             tile.deleteLater()
@@ -175,6 +180,60 @@ class MainWindow(QMainWindow):
         self._report_clip(saved, longest, folder)
         return saved
 
+    def toggle_recording(self) -> bool:
+        """Start recording the cameras on screen, or stop whatever is recording."""
+        if self._recording:
+            self._stop_recording()
+        else:
+            self._start_recording()
+        # Sync the toolbar to what is actually happening, on every path. Clicking
+        # a checkable action toggles it before this runs, so a failed start would
+        # otherwise leave the toolbar showing a recording that never began.
+        recording = bool(self._recording)
+        self._record_action.setChecked(recording)
+        return recording
+
+    def _start_recording(self) -> None:
+        targets = capture_targets(self._cameras, self._focused)
+        if not targets:
+            self.statusBar().showMessage("No cameras to record", 5000)
+            return
+        folder = self._settings.capture_folder()
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self.statusBar().showMessage(f"Could not save to {_pretty(folder)}: {exc}", 5000)
+            return
+        when = datetime.now()
+        started: list[Camera] = []
+        for camera in targets:
+            tile = self._tiles.get(camera.url)
+            if tile is None:
+                continue
+            name = recording_filename(camera.name, when)
+            path = folder / unique_filename(name, lambda c: (folder / c).exists())
+            if tile.start_recording(path, when):
+                started.append(camera)
+        if not started:
+            self.statusBar().showMessage("Could not start recording", 5000)
+            return
+        # The set is locked here: changing view never changes what is recording.
+        self._recording = started
+        plural = "s" if len(started) > 1 else ""
+        self.statusBar().showMessage(
+            f"Recording {len(started)} camera{plural} to {_pretty(folder)}", 5000
+        )
+
+    def _stop_recording(self) -> None:
+        stopped = 0
+        for camera in self._recording:
+            tile = self._tiles.get(camera.url)
+            if tile is not None:
+                tile.stop_recording()
+                stopped += 1
+        self._recording = []
+        self.statusBar().showMessage(f"Stopped recording {stopped} cameras", 5000)
+
     def tiles(self) -> list[CameraTile]:
         return [self._tiles[c.url] for c in self._cameras]
 
@@ -195,6 +254,10 @@ class MainWindow(QMainWindow):
         self._clip_action = QAction("Clip", self)
         self._clip_action.setToolTip("Save the buffered last seconds (C)")
         self._clip_action.triggered.connect(self.clip)
+        self._record_action = QAction("Record", self)
+        self._record_action.setCheckable(True)
+        self._record_action.setToolTip("Record the cameras on screen until stopped (R)")
+        self._record_action.triggered.connect(self.toggle_recording)
         self._folder_action = QAction("Choose folder…", self)
         self._folder_action.triggered.connect(self._choose_folder)
         self._capture_folder_action = QAction("Capture folder…", self)
@@ -206,6 +269,7 @@ class MainWindow(QMainWindow):
         self._toolbar.addWidget(spacer)
         self._toolbar.addAction(self._capture_action)
         self._toolbar.addAction(self._clip_action)
+        self._toolbar.addAction(self._record_action)
         self._toolbar.addAction(self._mute_action)
         self._toolbar.addAction(self._folder_action)
         self._toolbar.addAction(self._capture_folder_action)
@@ -240,6 +304,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("M"), self, activated=self.toggle_mute)
         QShortcut(QKeySequence("S"), self, activated=self.capture)
         QShortcut(QKeySequence("C"), self, activated=self.clip)
+        QShortcut(QKeySequence("R"), self, activated=self.toggle_recording)
         QShortcut(QKeySequence("F11"), self, activated=self._toggle_fullscreen)
 
     # Keeping the UI in sync
@@ -381,6 +446,10 @@ class MainWindow(QMainWindow):
         super().keyPressEvent(event)
 
     def closeEvent(self, event) -> None:
+        # Stop first so mpv finalises each container. Shutting the player down
+        # mid-recording leaves a file that will not play.
+        if self._recording:
+            self._stop_recording()
         for tile in self._tiles.values():
             tile.shutdown()
         super().closeEvent(event)
