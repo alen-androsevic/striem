@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from striem.audio import AudioState
+from striem.egg import BONUS_CAMERA, CodeDetector
 from striem.layout import diff_cameras, grid_dims
 from striem.playlist import Camera, load_cameras
 from striem.tile import CameraTile
@@ -45,6 +46,8 @@ class MainWindow(QMainWindow):
         self._focused: str | None = None
         self._audio = AudioState()
         self._camera_actions: list[QAction] = []
+        self._bonus: list[Camera] = []
+        self._konami = CodeDetector()
 
         self._build_toolbar()
         self._build_pages()
@@ -64,6 +67,8 @@ class MainWindow(QMainWindow):
 
     def rescan(self) -> None:
         cameras, errors = load_cameras(self._folder)
+        known = {camera.url for camera in cameras}
+        cameras += [camera for camera in self._bonus if camera.url not in known]
         added, removed, kept = diff_cameras(self._cameras, cameras)
         for camera in removed:
             tile = self._tiles.pop(camera.url)
@@ -267,6 +272,15 @@ class MainWindow(QMainWindow):
             self.showNormal()
         else:
             self.showFullScreen()
+
+    def keyPressEvent(self, event) -> None:
+        # Arrows, B and A are the only keys with no shortcut, so the code can be
+        # typed without tripping focus, mute or fullscreen on the way through.
+        if self._konami.feed(event.key()) and not self._bonus:
+            self._bonus = [BONUS_CAMERA]
+            self.rescan()
+            self.statusBar().showMessage(f"{BONUS_CAMERA.name} joined the grid", 5000)
+        super().keyPressEvent(event)
 
     def closeEvent(self, event) -> None:
         for tile in self._tiles.values():
