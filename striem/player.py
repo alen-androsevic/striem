@@ -33,10 +33,21 @@ MPV_OPTIONS = {
     "vo": "libmpv",
     "profile": "low-latency",
     "rtsp_transport": "tcp",
-    "cache": "no",
+    # The back buffer is what makes a clip of the last seconds possible. It does
+    # not fight the low-latency profile: that profile never set cache=no, and
+    # with the cache on the stream still sits at the live edge (measured 0.24 s
+    # of forward cache, ~80 KB/s of history at 640x360).
+    "cache": "yes",
     "hwdec": "auto-copy-safe",
     "keep_open": "yes",
     "mute": "yes",
+    # profile=low-latency sets demuxer-lavf-probe-info=nostreams, which starves
+    # the container writer of codec info: both dump-cache and stream-record then
+    # produce 0-byte files. Overriding this one option is what makes clips and
+    # recordings work, and it costs no measurable startup latency (1.56 s vs
+    # 1.57 s). Do not remove it as redundant-looking cleanup.
+    "demuxer_lavf_probe_info": "yes",
+    "demuxer_max_back_bytes": "32MiB",
 }
 
 CONNECT_TIMEOUT_S = 10
