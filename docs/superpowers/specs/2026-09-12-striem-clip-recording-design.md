@@ -49,6 +49,13 @@ assumptions:
 - mpv offers **no time-based back buffer**. `--demuxer-max-back-bytes` is a
   byte size; `--cache-secs` is forward-only. A clip length in seconds is
   therefore a dump-request window, not a buffer setting.
+- `demuxer-cache-state` has **no `cache-begin` field**. Confirmed keys are
+  `cache-end`, `reader-pts`, `cache-duration` (forward, measured 0.0),
+  `total-bytes`, `fw-bytes`, `bof-cached`, `eof-cached` and
+  `seekable-ranges`. The available back window comes from `seekable-ranges`,
+  a list of `{start, end}`: `reader-pts - min(start)`. Measured 20.69 s after
+  20 s of playback, with `bof-cached: True` because a 32 MiB buffer has not
+  wrapped that early.
 
 ## Stream configuration
 
@@ -207,8 +214,15 @@ mid-recording to exercise the part-file path, and quitting while recording to
 confirm containers finalise.
 
 **Not testable on macOS:** the Flatpak sandbox. This changes the grant rather
-than adding one, so it needs a build on Bazzite to confirm. The subpath syntax
-`xdg-videos/Striem:create` is also unverified on a real build.
+than adding one, so it needs a build on Bazzite to confirm.
+
+The subpath syntax itself is confirmed against Flatpak's documentation:
+`xdg-*` tokens accept a trailing subpath (`--filesystem=xdg-documents/path` is
+a documented example), and `:create` means "available read/write, and create it
+if it does not already exist" — so the app's own `mkdir(parents=True)` is
+covered, where a plain `:rw` on a missing directory would not have been.
+A narrow grant is not shadowed by the broader `home:ro`; Flatpak resolves
+overlapping filesystem rules by specificity.
 
 ## Known limitations
 
@@ -218,12 +232,22 @@ than adding one, so it needs a build on Bazzite to confirm. The subpath syntax
 - Retained buffer duration varies with bitrate, because mpv's back buffer is
   sized in bytes. The app reports what it actually wrote rather than claiming N.
 
-## First implementation task
+## Resolved: the back-window fields
 
-Verify the `demuxer-cache-state` field names (`cache-begin`, `reader-pts`)
-before any code depends on them. The probe printed only `total-bytes` and
-`fw-bytes`, so the fields used to compute the available back-window follow
-mpv's documentation but are not yet confirmed here.
+This was listed as the first implementation task and has since been verified
+against mpv 0.41. The assumption in the first draft was **wrong**: there is no
+`cache-begin` field. The available back window is derived from
+`seekable-ranges` instead:
+
+```python
+ranges = state.get("seekable-ranges") or []
+earliest = min(r["start"] for r in ranges)      # oldest buffered moment
+available = (state["reader-pts"] or 0) - earliest
+```
+
+A clip request is therefore clamped to `max(earliest, pos - N)` rather than
+assuming N seconds are present, which is what lets the status message report
+the duration actually written.
 
 ## Out of scope
 
