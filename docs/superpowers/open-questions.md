@@ -3,7 +3,29 @@
 A running log for work done while Alen is away. Two parts: things that need a
 human answer, and calls I made on his behalf so they can be reversed cheaply.
 
-Last updated: 2026-09-12, during the clips and recording work.
+Last updated: 2026-09-12, after finishing the clips and recording work.
+
+---
+
+## Where things stand
+
+All twelve tasks in the clips and recording plan are implemented, verified and
+committed on `feat/camera-clips`. Nothing is pushed. The test suite is at 105
+passing.
+
+Verified by actually running it against the fake cameras, not by reasoning:
+
+| Behaviour | Evidence |
+|---|---|
+| Grid clip writes one file per camera, focused writes one | 4 files sharing a timestamp, then exactly 1 |
+| Clip length clamps to what is buffered | asked 30 s after 20 s of playback, got 19.54 s; 3 s later, 22.54 s |
+| Recording set is locked at start | started in grid, focused one camera mid-recording, all 4 files still 6.0 s |
+| A clip during a recording disturbs neither | recordings 12.01-12.13 s, clips 12.5-13.5 s, all playable |
+| A stream drop resumes into a new part | 1.0 s `-rec.mkv` plus 12.0 s `-rec2.mkv`, both playable |
+| Quitting mid-recording finalises the files | exited while recording, all 4 files valid h264+aac |
+
+The one thing I could not verify is the Flatpak sandbox, which is question 1
+below and needs your machine.
 
 ---
 
@@ -58,7 +80,19 @@ Options: two stacked PRs in order, or squash both into one. I defaulted to
 keeping them separate, since they are separately reviewable features. Tell me if
 you want them combined, or want the capture PR opened now.
 
-### 4. Are `C` and `R` the right keys?
+### 4. How do you want this integrated?
+
+Both features are finished and committed, and nothing is pushed. I deliberately
+did not merge or open a PR: pushing is outward-facing and merging into a base
+branch is awkward to undo, so that decision is yours even though you said to keep
+working. The options are to merge locally into the base, to push and open pull
+requests, or to leave the branches sitting as they are.
+
+My suggestion, if you want one: open the capture PR first and let the clips PR
+follow it, since the second genuinely builds on the first and reviewing them in
+that order is much easier than reading them together.
+
+### 5. Are `C` and `R` the right keys?
 
 Both are unbound in the app today, and the existing keys (`1`-`9`, `0`, `Esc`,
 `M`, `S`, `F11`, plus the Konami arrows/`B`/`A`) are untouched. But you are the
