@@ -96,7 +96,7 @@ jobs:
           flatpak install --user striem.flatpak
           ```
           EOF
-          printf '\nWant fixes before they are released? Nightly builds from `next`: https://github.com/%s/releases/tag/nightly\n' \
+          printf '\nWant fixes before they are released? Nightly builds from `next`: https://github.com/%s/releases/tag/nightly-rolling\n' \
             "$GITHUB_REPOSITORY" >> notes.md
           gh release create "$GITHUB_REF_NAME" striem.flatpak \
             --repo "$GITHUB_REPOSITORY" \
@@ -115,9 +115,9 @@ jobs:
         with:
           name: striem-flatpak
 
-      # One rolling release on a reused tag: delete it, then recreate it at this
-      # commit. --prerelease keeps the newest stable holding the "Latest" badge,
-      # so the Releases page still defaults people to stable.
+      # One rolling release on the nightly-rolling tag: delete it, then recreate
+      # it at this commit. --prerelease keeps the newest stable holding the
+      # "Latest" badge, so the Releases page still defaults people to stable.
       - name: Publish rolling nightly
         env:
           GH_TOKEN: ${{ github.token }}
@@ -140,13 +140,20 @@ jobs:
           # the release and its tag explicitly so create can re-point the tag at
           # this commit. No blanket "|| true" — a swallowed delete is what let a
           # stale nightly survive once already.
-          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release delete nightly --yes --repo "$GITHUB_REPOSITORY"
+          #
+          # The tag is nightly-rolling, not nightly. GitHub permanently refuses
+          # to re-create a ref whose name was once held by an immutable release,
+          # and "nightly" is burned: it returns 422 even with immutability now
+          # disabled. If immutability is ever switched back on, the first release
+          # published under this name burns it too, and delete-and-recreate stops
+          # working — at which point the channel needs a tag per build instead.
+          if gh release view nightly-rolling --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete nightly-rolling --yes --repo "$GITHUB_REPOSITORY"
           fi
           # A tag can outlive its release; if this leaves one behind, create fails
           # loudly rather than quietly publishing against the wrong commit.
-          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" >/dev/null 2>&1 || true
-          gh release create nightly striem-nightly.flatpak \
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly-rolling" >/dev/null 2>&1 || true
+          gh release create nightly-rolling striem-nightly.flatpak \
             --repo "$GITHUB_REPOSITORY" \
             --title Nightly \
             --prerelease \
