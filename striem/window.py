@@ -10,12 +10,15 @@ from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFileDialog,
     QGridLayout,
+    QInputDialog,
     QLabel,
     QMainWindow,
+    QMenu,
     QPushButton,
     QSizePolicy,
     QStackedWidget,
     QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -263,6 +266,21 @@ class MainWindow(QMainWindow):
         self._folder_action.triggered.connect(self._choose_folder)
         self._capture_folder_action = QAction("Capture folder…", self)
         self._capture_folder_action.triggered.connect(self._choose_capture_folder)
+        self._clip_length_action = QAction("Clip length…", self)
+        self._clip_length_action.triggered.connect(self._choose_clip_length)
+
+        # Three capture actions earn their place on the bar; the settings do not.
+        # Parented to self so the menu outlives this method.
+        menu = QMenu(self)
+        menu.addAction(self._folder_action)
+        menu.addAction(self._capture_folder_action)
+        menu.addAction(self._clip_length_action)
+        self._overflow = QToolButton(self)
+        self._overflow.setText("⋮")
+        self._overflow.setToolTip("Folders and clip length")
+        self._overflow.setMenu(menu)
+        self._overflow.setPopupMode(QToolButton.InstantPopup)
+
         spacer = QWidget(self)
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self._toolbar.addAction(self._all_action)
@@ -271,9 +289,9 @@ class MainWindow(QMainWindow):
         self._toolbar.addAction(self._capture_action)
         self._toolbar.addAction(self._clip_action)
         self._toolbar.addAction(self._record_action)
+        self._toolbar.addSeparator()
         self._toolbar.addAction(self._mute_action)
-        self._toolbar.addAction(self._folder_action)
-        self._toolbar.addAction(self._capture_folder_action)
+        self._toolbar.addWidget(self._overflow)
 
     def _build_pages(self) -> None:
         self._stack = QStackedWidget(self)
@@ -435,6 +453,18 @@ class MainWindow(QMainWindow):
         )
         if chosen:
             self._settings.set_capture_folder(Path(chosen))
+
+    def _choose_clip_length(self) -> None:
+        seconds, ok = QInputDialog.getInt(
+            self,
+            "Clip length",
+            "Seconds to save when clipping:",
+            self._settings.clip_seconds(),
+            1,
+            300,
+        )
+        if ok:
+            self._settings.set_clip_seconds(seconds)
 
     def _toggle_fullscreen(self) -> None:
         if self.isFullScreen():
