@@ -84,6 +84,20 @@ class MpvWidget(QOpenGLWidget):
         if self._player is not None:
             self._player.mute = muted
 
+    def capture_to(self, path) -> bool:
+        """Write the current frame to `path` at the stream's own resolution.
+
+        `includes="video"` takes the decoded frame instead of asking the video
+        output for one, which is what makes this work under vo=libmpv.
+        """
+        if self._player is None:
+            return False
+        try:
+            self._player.screenshot_to_file(str(path), includes="video")
+        except Exception:  # a failed grab must never take the window down
+            return False
+        return True
+
     def shutdown(self) -> None:
         """Release mpv. Call before the widget is destroyed; safe to call twice."""
         if self._player is None:

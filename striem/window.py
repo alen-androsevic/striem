@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QFileSystemWatcher, Qt, QTimer
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 from striem.audio import AudioState
+from striem.capture import capture_path, capture_targets
 from striem.egg import BONUS_CAMERA, CodeDetector
 from striem.layout import diff_cameras, grid_dims
 from striem.playlist import Camera, load_cameras
@@ -116,6 +118,34 @@ class MainWindow(QMainWindow):
         self._audio.toggle_mute()
         self._apply_audio()
 
+    def capture(self) -> list[Path]:
+        """Save a frame from the focused camera, or from every camera in the grid."""
+        targets = capture_targets(self._cameras, self._focused)
+        if not targets:
+            self.statusBar().showMessage("No cameras to capture", 5000)
+            return []
+        folder = self._settings.capture_folder()
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self.statusBar().showMessage(f"Could not save to {_pretty(folder)}: {exc}", 5000)
+            return []
+        # One timestamp for the whole burst, so a grid capture groups together.
+        when = datetime.now()
+        saved: list[Path] = []
+        skipped = 0
+        for camera in targets:
+            tile = self._tiles.get(camera.url)
+            if tile is None:
+                continue
+            path = capture_path(folder, camera.name, when)
+            if tile.capture_to(path):
+                saved.append(path)
+            else:
+                skipped += 1
+        self._report_capture(saved, skipped, folder)
+        return saved
+
     def tiles(self) -> list[CameraTile]:
         return [self._tiles[c.url] for c in self._cameras]
 
@@ -130,15 +160,22 @@ class MainWindow(QMainWindow):
         self._mute_action = QAction("Mute", self)
         self._mute_action.setCheckable(True)
         self._mute_action.triggered.connect(self.toggle_mute)
+        self._capture_action = QAction("Capture", self)
+        self._capture_action.setToolTip("Save a frame from the cameras on screen (S)")
+        self._capture_action.triggered.connect(self.capture)
         self._folder_action = QAction("Choose folder…", self)
         self._folder_action.triggered.connect(self._choose_folder)
+        self._capture_folder_action = QAction("Capture folder…", self)
+        self._capture_folder_action.triggered.connect(self._choose_capture_folder)
         spacer = QWidget(self)
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self._toolbar.addAction(self._all_action)
         self._camera_anchor = self._toolbar.addSeparator()
         self._toolbar.addWidget(spacer)
+        self._toolbar.addAction(self._capture_action)
         self._toolbar.addAction(self._mute_action)
         self._toolbar.addAction(self._folder_action)
+        self._toolbar.addAction(self._capture_folder_action)
 
     def _build_pages(self) -> None:
         self._stack = QStackedWidget(self)
@@ -168,6 +205,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("0"), self, activated=self.show_grid)
         QShortcut(QKeySequence("Esc"), self, activated=self.show_grid)
         QShortcut(QKeySequence("M"), self, activated=self.toggle_mute)
+        QShortcut(QKeySequence("S"), self, activated=self.capture)
         QShortcut(QKeySequence("F11"), self, activated=self._toggle_fullscreen)
 
     # Keeping the UI in sync
@@ -224,6 +262,14 @@ class MainWindow(QMainWindow):
             tile.set_audible(self._audio.is_unmuted(url))
         self._mute_action.setChecked(self._audio.muted)
 
+    def _report_capture(self, saved: list[Path], skipped: int, folder: Path) -> None:
+        if not saved:
+            self.statusBar().showMessage("Nothing to save: no camera is playing", 5000)
+            return
+        what = saved[0].name if len(saved) == 1 else f"{len(saved)} frames"
+        note = f" ({skipped} not playing)" if skipped else ""
+        self.statusBar().showMessage(f"Saved {what} to {_pretty(folder)}{note}", 5000)
+
     def _show_errors(self, errors: list[tuple[Path, str]]) -> None:
         if errors:
             names = ", ".join(path.name for path, _ in errors)
@@ -267,6 +313,14 @@ class MainWindow(QMainWindow):
         self._settings.set_folder(self._folder)
         self._focused = None
         self.rescan()
+
+    def _choose_capture_folder(self) -> None:
+        current = self._settings.capture_folder()
+        chosen = QFileDialog.getExistingDirectory(
+            self, "Choose folder for captured frames", str(current)
+        )
+        if chosen:
+            self._settings.set_capture_folder(Path(chosen))
 
     def _toggle_fullscreen(self) -> None:
         if self.isFullScreen():

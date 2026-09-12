@@ -14,6 +14,7 @@ finish-args:
   - --device=dri
   - --socket=pulseaudio
   - --filesystem=home:ro
+  - --filesystem=xdg-pictures:create
 
 build-options:
   env:

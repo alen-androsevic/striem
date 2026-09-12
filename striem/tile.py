@@ -31,6 +31,7 @@ class CameraTile(QWidget):
         self.audible = False
         self._attempt = 0
         self._countdown = 0
+        self._playing = False
 
         self.setAttribute(Qt.WA_StyledBackground, True)
         self.setStyleSheet("CameraTile { background: black; }")
@@ -76,18 +77,27 @@ class CameraTile(QWidget):
     def status_text(self) -> str:
         return self._status.text() if not self._status.isHidden() else ""
 
+    def capture_to(self, path) -> bool:
+        """Write the current frame to `path`. False while the stream is not playing,
+        since the tile is then showing a frozen frame rather than live video."""
+        if not self._playing:
+            return False
+        return self.video.capture_to(path)
+
     def shutdown(self) -> None:
         self._timer.stop()
         self.video.shutdown()
 
     def _on_playing(self) -> None:
         self._attempt = 0
+        self._playing = True
         self._timer.stop()
         self._status.hide()
         self._frozen.hide()
         self._frozen_image = None
 
     def _on_failed(self, _reason: str) -> None:
+        self._playing = False
         if self._timer.isActive():
             return
         if self._frozen.isHidden():

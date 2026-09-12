@@ -74,6 +74,7 @@ Put your `.xspf` playlists in `~/Videos/Cameras`, or pick another folder with **
 | Back to the grid | `Esc`, `0`, **All**, or click the focused camera |
 | Sound | 🔇/🔊 on a tile. Only one camera plays sound at a time; focusing a camera gives it the sound, and returning to the grid silences it |
 | Mute / unmute | `M` or **Mute** |
+| Save a frame | `S` or **Capture**. The focused camera, or every camera at once from the grid. Files land in `~/Pictures/Striem`; change it with **Capture folder…** |
 | Fullscreen | `F11` |
 
 ## Develop (macOS or Linux)
