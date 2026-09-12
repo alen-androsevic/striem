@@ -90,6 +90,14 @@ def test_build_script_bundle_mode_exports_a_single_file():
     assert "striem.flatpak" in script
 
 
+def test_ci_workflow_bundles_the_same_manifest():
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    step = workflow["jobs"]["bundle"]["steps"][-1]
+    assert step["uses"].startswith("flatpak/flatpak-github-actions/flatpak-builder@")
+    assert step["with"]["manifest-path"] == f"flatpak/{APP_ID}.yml"
+    assert step["with"]["bundle"] == "striem.flatpak"
+
+
 def test_bundle_artifacts_are_ignored():
     ignored = (ROOT / ".gitignore").read_text().split()
     assert "repo/" in ignored

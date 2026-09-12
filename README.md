@@ -35,6 +35,14 @@ To update, install a newer bundle or rebuild: either one replaces the installed 
 
 This writes `striem.flatpak`, a single file that needs no source checkout and no build toolchain on their machine. Build it on the architecture they run (x86_64 for a Bazzite PC) — a bundle will not install on a different one.
 
+Or let CI build it, which is the only option if you have no Linux machine:
+
+```sh
+git tag v0.1.1 && git push origin v0.1.1
+```
+
+GitHub Actions builds the x86_64 bundle and attaches it to a release, so they can download `striem.flatpak` from the Releases page. Every push to `main` builds one too, downloadable from that run's Artifacts.
+
 ## Use
 
 Put your `.xspf` playlists in `~/Videos/Cameras`, or pick another folder with **Choose folder…**. The app rescans when files in the folder change.

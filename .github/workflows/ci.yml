@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # striem.player imports the mpv module at import time, which resolves
+      # libmpv through ctypes, and PySide6 needs system GL/xkb libraries even
+      # when no QApplication is created.
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libmpv2 libegl1 libgl1 libxkbcommon0
+
+      - run: pip install -e '.[dev]'
+      - run: pytest -q
+
+  bundle:
+    name: Flatpak bundle
+    runs-on: ubuntu-latest
+    container:
+      # Pre-seeded flatpak-builder image. Its KDE version only warms the cache:
+      # the manifest's 6.11 runtime, SDK and PySide BaseApp are installed from
+      # Flathub at build time, so the tag need not match.
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.10
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: striem.flatpak
+          manifest-path: flatpak/io.github.striem.Striem.yml
+          artifact-name: striem-flatpak
+          cache-key: flatpak-builder-${{ hashFiles('flatpak/io.github.striem.Striem.yml') }}
+
+  release:
+    name: Attach bundle to release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [tests, bundle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: striem-flatpak
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" striem.flatpak \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --notes 'Download `striem.flatpak` below, then install it with `flatpak install --user striem.flatpak`.'
