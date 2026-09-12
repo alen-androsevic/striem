@@ -22,6 +22,8 @@ flatpak install --user striem-nightly.flatpak
 
 Both channels share one app ID, so installing either replaces the other — choose a channel per machine, and switch by installing the other file. Those two URLs always point at the current build, so they are safe to bookmark.
 
+With a checkout of this repo, `./install.sh` (or `./install.sh --nightly`) does the download and install in one step.
+
 Or build it from source:
 
 ```sh
@@ -55,12 +57,12 @@ Or let CI build it, which is the only option if you have no Linux machine.
 | Stable | Push a `v*` tag | New release, becomes "Latest" |
 
 ```sh
-git tag v0.1.2 && git push origin v0.1.2
+git tag v0.1.4 && git push origin v0.1.4
 ```
 
 GitHub Actions builds the x86_64 bundle and attaches it, so nobody needs a Linux machine or a toolchain. Nightlies are marked as pre-releases, which is what keeps the newest stable release the one GitHub shows by default. Each release links to the other channel.
 
-Pull requests run the tests only — the six-minute Flatpak build is reserved for `main`, `next` and tags.
+Pull requests run the tests only — the six-minute Flatpak build is reserved for `next` and tags, the two places its output is actually published. Work reaches `main` only through `next`, so that tree has already been bundled and a `main` push builds nothing.
 
 ## Use
 

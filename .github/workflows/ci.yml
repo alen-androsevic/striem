@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, next]
+    branches: [next]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -34,8 +34,15 @@ jobs:
 
   bundle:
     name: Flatpak bundle
-    # Six minutes a run, so it builds only where the result is worth having:
-    # merges into main or next, and release tags. Never per pull-request commit.
+    # Six minutes a run, so it builds only where the result gets published:
+    # merges into next (nightly) and v* tags (stable). Never on a pull request,
+    # and not on a main push either — everything reaches main through next, so
+    # that tree has already been bundled.
+    #
+    # The cost of leaving main out: only the default branch can write the shared
+    # build cache, so when flatpak/*.yml changes the key changes and the next tag
+    # build runs cold (~8m instead of ~5m30s). Run this workflow manually on main
+    # once (gh workflow run CI --ref main) to repopulate it if that matters.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     container:
@@ -46,6 +53,18 @@ jobs:
       options: --privileged
     steps:
       - uses: actions/checkout@v4
+
+      # Both channels are built from this one manifest, so nothing inside the
+      # bundle could otherwise say which it is. The ref is the only source of
+      # truth. The app module copies striem/ wholesale, so a file written here
+      # lands in the install; anything unstamped reports "dev" instead.
+      - name: Stamp the release channel
+        run: |
+          case "$GITHUB_REF" in
+            refs/tags/v*) echo stable > striem/CHANNEL ;;
+            refs/heads/next) echo nightly > striem/CHANNEL ;;
+            *) echo "leaving unstamped: $GITHUB_REF" ;;
+          esac
 
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:

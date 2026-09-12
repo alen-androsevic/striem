@@ -24,6 +24,7 @@ from striem.egg import BONUS_CAMERA, CodeDetector
 from striem.layout import diff_cameras, grid_dims
 from striem.playlist import Camera, load_cameras
 from striem.tile import CameraTile
+from striem.version import title
 
 RESCAN_DEBOUNCE_MS = 500
 
@@ -37,7 +38,7 @@ def _pretty(folder: Path) -> str:
 class MainWindow(QMainWindow):
     def __init__(self, settings):
         super().__init__()
-        self.setWindowTitle("Striem")
+        self.setWindowTitle(title())
         self.resize(1280, 760)
         self._settings = settings
         self._folder: Path = settings.folder()

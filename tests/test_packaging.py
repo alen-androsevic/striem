@@ -6,6 +6,8 @@ from xml.etree import ElementTree
 
 import yaml
 
+import striem
+
 ROOT = Path(__file__).resolve().parents[1]
 FLATPAK = ROOT / "flatpak"
 APP_ID = "io.github.striem.Striem"
@@ -100,13 +102,29 @@ def test_ci_workflow_bundles_the_same_manifest():
     assert step["with"]["bundle"] == "striem.flatpak"
 
 
-def test_bundle_builds_only_on_integration_branches():
+def test_bundle_builds_only_where_it_gets_published():
     workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
     # YAML 1.1 reads a bare `on:` key as the boolean True, not the string "on".
-    assert workflow[True]["push"]["branches"] == ["main", "next"]
+    # main is deliberately absent: work reaches main only through next, so its
+    # tree is already bundled, and a main push publishes nothing.
+    assert workflow[True]["push"]["branches"] == ["next"]
+    assert workflow[True]["push"]["tags"] == ["v*"]
     assert workflow["jobs"]["bundle"]["if"] == "github.event_name != 'pull_request'"
     # Tests are cheap and stay on every pull-request commit.
     assert "if" not in workflow["jobs"]["tests"]
+
+
+def test_install_script_covers_both_channels():
+    script = ROOT / "install.sh"
+    text = script.read_text()
+    assert os.access(script, os.X_OK)
+    assert "--nightly" in text
+    # Both permanent paths, so a release never means editing this script. The
+    # host and /releases prefix sit in a variable, so match from the path on.
+    assert "/releases" in text
+    assert "/latest/download/striem.flatpak" in text
+    assert "/download/nightly/striem-nightly.flatpak" in text
+    assert "flatpak install --user" in text
 
 
 def test_release_channels_are_wired_to_their_branches():
@@ -132,18 +150,35 @@ def test_release_channels_are_wired_to_their_branches():
     assert "releases/latest" in nightly
 
 
+def test_ci_stamps_the_release_channel():
+    workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    steps = workflow["jobs"]["bundle"]["steps"]
+    stamp = next(s for s in steps if "CHANNEL" in s.get("run", ""))
+    # One manifest builds both channels, so only the ref distinguishes them.
+    assert "refs/tags/v*) echo stable" in stamp["run"]
+    assert "refs/heads/next) echo nightly" in stamp["run"]
+    assert "striem/CHANNEL" in stamp["run"]
+    # It has to run before the bundle is built, or the file misses the copy.
+    assert steps.index(stamp) < len(steps) - 1
+
+
 def test_metainfo_records_the_shipping_version():
     version = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     releases = ElementTree.parse(FLATPAK / f"{APP_ID}.metainfo.xml").getroot().find("releases")
     # Software centres read this file. It silently drifted through v0.1.1, so
     # the newest entry has to match what pyproject says we are shipping.
     assert releases[0].get("version") == version
+    # The title bar reads __version__, and the Flatpak copies the package in
+    # rather than pip-installing it, so there is no metadata to fall back on.
+    assert striem.__version__ == version
 
 
 def test_bundle_artifacts_are_ignored():
     ignored = (ROOT / ".gitignore").read_text().split()
     assert "repo/" in ignored
     assert "striem.flatpak" in ignored
+    # CI writes this into the package at build time; never commit it.
+    assert "striem/CHANNEL" in ignored
 
 
 def test_pycache_removed_before_copy():
