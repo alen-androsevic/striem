@@ -13,6 +13,8 @@ from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QOpenGLContext
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
+from striem.capture import clip_window
+
 _LIBMPV_CANDIDATES = ("/app/lib/libmpv.so.2", "/opt/homebrew/lib/libmpv.dylib")
 
 
@@ -108,6 +110,26 @@ class MpvWidget(QOpenGLWidget):
         except Exception:  # a failed grab must never take the window down
             return False
         return True
+
+    def clip_to(self, path, seconds: float) -> float:
+        """Write the buffered last `seconds` to `path`.
+
+        Returns the duration actually written, which is less than `seconds` when
+        the buffer does not reach back that far, and 0.0 when nothing could be
+        saved. The end is always bounded: dump-cache with an open end never
+        returns on a live stream, it just keeps writing as the cache grows.
+        """
+        if self._player is None:
+            return 0.0
+        try:
+            window = clip_window(self._player.demuxer_cache_state or {}, seconds)
+            if window is None:
+                return 0.0
+            begin, end = window
+            self._player.command("dump-cache", begin, end, str(path))
+        except Exception:  # a failed dump must never take the window down
+            return 0.0
+        return end - begin
 
     def shutdown(self) -> None:
         """Release mpv. Call before the widget is destroyed; safe to call twice."""

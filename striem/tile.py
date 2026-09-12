@@ -84,6 +84,12 @@ class CameraTile(QWidget):
             return False
         return self.video.capture_to(path)
 
+    def clip_to(self, path, seconds: float) -> float:
+        """Write the buffered last `seconds`. 0.0 while the stream is not playing."""
+        if not self._playing:
+            return 0.0
+        return self.video.clip_to(path, seconds)
+
     def shutdown(self) -> None:
         self._timer.stop()
         self.video.shutdown()
