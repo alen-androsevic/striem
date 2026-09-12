@@ -1,10 +1,14 @@
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from striem.capture import (
+    available_back_seconds,
     capture_filename,
     capture_path,
     capture_targets,
+    clip_window,
     recording_filename,
     unique_filename,
 )
@@ -77,3 +81,30 @@ def test_recording_filename_numbers_later_parts():
     when = datetime(2026, 9, 12, 14, 30, 5)
     assert recording_filename("Cam", when, part=2) == "2026-09-12_143005_Cam-rec2.mkv"
     assert recording_filename("Cam", when, part=3) == "2026-09-12_143005_Cam-rec3.mkv"
+
+
+# The shapes below match what mpv 0.41 actually returns for demuxer-cache-state.
+# There is no cache-begin field, whatever the first draft of the spec claimed.
+
+
+def test_available_back_seconds_uses_the_oldest_seekable_range():
+    state = {"reader-pts": 20.7, "seekable-ranges": [{"start": 0.7, "end": 20.2}]}
+    assert available_back_seconds(state) == pytest.approx(20.0)
+
+
+def test_available_back_seconds_is_zero_without_ranges():
+    assert available_back_seconds({"reader-pts": 5.0, "seekable-ranges": []}) == 0.0
+
+
+def test_clip_window_is_the_requested_span_when_buffered():
+    state = {"reader-pts": 100.0, "seekable-ranges": [{"start": 10.0, "end": 99.0}]}
+    assert clip_window(state, 30) == (70.0, 100.0)
+
+
+def test_clip_window_clamps_to_what_is_buffered():
+    state = {"reader-pts": 20.0, "seekable-ranges": [{"start": 12.0, "end": 19.5}]}
+    assert clip_window(state, 30) == (12.0, 20.0)
+
+
+def test_clip_window_is_none_when_nothing_is_buffered():
+    assert clip_window({"reader-pts": 3.0, "seekable-ranges": []}, 30) is None

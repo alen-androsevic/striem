@@ -56,3 +56,32 @@ def capture_targets(cameras: list[Camera], focused: str | None) -> list[Camera]:
     if focused is None:
         return list(cameras)
     return [camera for camera in cameras if camera.url == focused]
+
+
+def available_back_seconds(cache_state: dict) -> float:
+    """Seconds of history mpv is actually holding.
+
+    Read from `seekable-ranges`. `demuxer-cache-state` has no `cache-begin`
+    field, whatever the first draft of the design claimed; this was verified
+    against mpv 0.41.
+    """
+    ranges = cache_state.get("seekable-ranges") or []
+    if not ranges:
+        return 0.0
+    earliest = min(r["start"] for r in ranges)
+    return max(0.0, (cache_state.get("reader-pts") or 0.0) - earliest)
+
+
+def clip_window(cache_state: dict, seconds: float) -> tuple[float, float] | None:
+    """The (start, end) to hand to dump-cache, clamped to what is buffered.
+
+    None when nothing is buffered yet. The end is always bounded on purpose:
+    dump-cache with an open end never returns on a live stream, it keeps
+    writing as the cache grows.
+    """
+    ranges = cache_state.get("seekable-ranges") or []
+    if not ranges:
+        return None
+    end = cache_state.get("reader-pts") or 0.0
+    earliest = min(r["start"] for r in ranges)
+    return max(earliest, end - seconds), end
