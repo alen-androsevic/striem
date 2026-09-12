@@ -75,7 +75,16 @@ Put your `.xspf` playlists in `~/Videos/Cameras`, or pick another folder with **
 | Sound | 🔇/🔊 on a tile. Only one camera plays sound at a time; focusing a camera gives it the sound, and returning to the grid silences it |
 | Mute / unmute | `M` or **Mute** |
 | Save a frame | `S` or **Capture**. The focused camera, or every camera at once from the grid. Files land in `~/Videos/Striem`; change it with **Capture folder…** |
+| Save a clip | `C` or **Clip**. The last 30 seconds of the focused camera, or of every camera from the grid. Change the length with **Clip length…** |
+| Record | `R` or **Record**. Starts the cameras on screen recording until pressed again. What was on screen when you started keeps recording however you navigate afterwards |
 | Fullscreen | `F11` |
+
+Striem holds the last seconds of every camera in memory so a clip can be saved
+after the thing you wanted has already happened — about 32 MiB per camera. That
+is roughly 30 seconds at 8 Mbps and longer for gentler streams; when a camera is
+too rich to hold the full length, the clip is shorter and the status bar says how
+long it actually saved. Clips and recordings are written as `.mkv` beside the
+stills in `~/Videos/Striem`.
 
 ## Develop (macOS or Linux)
 
