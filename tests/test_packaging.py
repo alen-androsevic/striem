@@ -79,6 +79,23 @@ def test_build_script_uses_manifest_and_is_executable():
     assert os.access(script, os.X_OK)
 
 
+def test_build_script_bundle_mode_exports_a_single_file():
+    script = (ROOT / "build.sh").read_text()
+    assert "--bundle" in script
+    # Bundle mode exports to a local repo instead of installing, then packs that
+    # repo into one file that carries the runtime's origin with it.
+    assert "--repo=repo" in script
+    assert "build-bundle" in script
+    assert "--runtime-repo=" in script
+    assert "striem.flatpak" in script
+
+
+def test_bundle_artifacts_are_ignored():
+    ignored = (ROOT / ".gitignore").read_text().split()
+    assert "repo/" in ignored
+    assert "striem.flatpak" in ignored
+
+
 def test_pycache_removed_before_copy():
     commands = module("striem")["build-commands"]
     clean_index = next(

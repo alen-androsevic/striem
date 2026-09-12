@@ -4,11 +4,36 @@ Watch the RTSP camera streams listed in a folder of `.xspf` playlists — all at
 
 ## Install (Bazzite / any Flatpak system)
 
+Flatpak is Linux-only; there is no macOS build path.
+
+Install a bundle someone handed you:
+
+```sh
+flatpak install --user striem.flatpak
+```
+
+Or build it from source:
+
 ```sh
 ./build.sh
 ```
 
-The first build downloads the KDE runtime and compiles libmpv, so it takes a while. Later builds are faster.
+The first build downloads the KDE runtime and compiles libmpv, so it takes a while; later builds reuse the cache. Without git, fetch the source as a tarball — `refs/heads/main` pins the branch regardless of the repo's default:
+
+```sh
+curl -L https://github.com/alen-androsevic/striem/archive/refs/heads/main.tar.gz | tar xz
+cd striem-main && ./build.sh
+```
+
+To update, install a newer bundle or rebuild: either one replaces the installed copy in place. Quit Striem first, since a running instance keeps the old version alive. `flatpak update` does nothing for Striem — a locally installed app has no remote to update from.
+
+## Hand it to someone else
+
+```sh
+./build.sh --bundle
+```
+
+This writes `striem.flatpak`, a single file that needs no source checkout and no build toolchain on their machine. Build it on the architecture they run (x86_64 for a Bazzite PC) — a bundle will not install on a different one.
 
 ## Use
 
