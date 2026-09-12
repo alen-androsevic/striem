@@ -25,6 +25,11 @@ class AudioState:
         self.active = url
         self.muted = False
 
+    def silence(self) -> None:
+        """Left focus mode: nothing audible, and no camera left for `M` to unmute."""
+        self.active = None
+        self.muted = False
+
     def toggle_mute(self) -> None:
         """The M key: mute/unmute the remembered camera. No-op without one."""
         if self.active is not None:
