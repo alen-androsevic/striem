@@ -22,6 +22,8 @@ flatpak install --user striem-nightly.flatpak
 
 Both channels share one app ID, so installing either replaces the other — choose a channel per machine, and switch by installing the other file. Those two URLs always point at the current build, so they are safe to bookmark.
 
+With a checkout of this repo, `./install.sh` (or `./install.sh --nightly`) does the download and install in one step.
+
 Or build it from source:
 
 ```sh
