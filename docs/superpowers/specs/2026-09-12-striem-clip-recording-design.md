@@ -231,6 +231,14 @@ overlapping filesystem rules by specificity.
   original spec's stalled-stream limitation.
 - Retained buffer duration varies with bitrate, because mpv's back buffer is
   sized in bytes. The app reports what it actually wrote rather than claiming N.
+- A recording interrupted by a stream drop loses some of the final seconds
+  before that drop. mpv writes packets as they arrive, so an abrupt
+  disconnection leaves the tail unflushed and the container unfinalised.
+  Measured: a part that had been recording for about five seconds when its
+  publisher was killed came back as 1.0 s. What was already flushed stays
+  playable and the recording resumes into a new part, so nothing previously
+  written is destroyed — but the seconds either side of a drop are not
+  guaranteed, and cannot be while the stream ends without warning.
 
 ## Resolved: the back-window fields
 
