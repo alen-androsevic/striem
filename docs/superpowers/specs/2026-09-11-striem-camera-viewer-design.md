@@ -58,7 +58,9 @@ A camera is audible iff it is `active` and not `muted`.
   `muted = False`; the previous camera goes silent.
 - Tile 🔈 button on the audible camera → `active = none`.
 - Focusing a camera → it becomes `active`, `muted = False`. Returning to the
-  grid does not change audio.
+  grid silences it: `active = none`, `muted = False`. Pressing `Esc`/`0` while
+  already in the grid changes nothing, so a camera unmuted with its 🔈 button
+  keeps its sound.
 - `M` / toolbar mute → flips `muted`; `active` is remembered, so pressing again
   restores sound on the same camera. With no `active` camera, `M` does nothing.
 - When the active camera is removed (folder change), `active = none`.

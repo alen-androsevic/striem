@@ -51,7 +51,7 @@ Put your `.xspf` playlists in `~/Videos/Cameras`, or pick another folder with **
 |---|---|
 | Focus a camera | Click its tile, its toolbar button, or press `1`–`9` |
 | Back to the grid | `Esc`, `0`, **All**, or click the focused camera |
-| Sound | 🔇/🔊 on a tile. Only one camera plays sound at a time; focusing a camera gives it the sound |
+| Sound | 🔇/🔊 on a tile. Only one camera plays sound at a time; focusing a camera gives it the sound, and returning to the grid silences it |
 | Mute / unmute | `M` or **Mute** |
 | Fullscreen | `F11` |
 
