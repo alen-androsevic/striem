@@ -102,10 +102,13 @@ def test_ci_workflow_bundles_the_same_manifest():
     assert step["with"]["bundle"] == "striem.flatpak"
 
 
-def test_bundle_builds_only_on_integration_branches():
+def test_bundle_builds_only_where_it_gets_published():
     workflow = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text())
     # YAML 1.1 reads a bare `on:` key as the boolean True, not the string "on".
-    assert workflow[True]["push"]["branches"] == ["main", "next"]
+    # main is deliberately absent: work reaches main only through next, so its
+    # tree is already bundled, and a main push publishes nothing.
+    assert workflow[True]["push"]["branches"] == ["next"]
+    assert workflow[True]["push"]["tags"] == ["v*"]
     assert workflow["jobs"]["bundle"]["if"] == "github.event_name != 'pull_request'"
     # Tests are cheap and stay on every pull-request commit.
     assert "if" not in workflow["jobs"]["tests"]
