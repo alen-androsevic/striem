@@ -131,6 +131,29 @@ class MpvWidget(QOpenGLWidget):
             return 0.0
         return end - begin
 
+    def start_recording(self, path) -> bool:
+        """Begin writing incoming data to `path`.
+
+        mpv always overwrites this target, so never reuse a path for a second
+        part of the same recording.
+        """
+        if self._player is None:
+            return False
+        try:
+            self._player.stream_record = str(path)
+        except Exception:
+            return False
+        return True
+
+    def stop_recording(self) -> None:
+        """Stop writing and let mpv finalise the container. Safe to call when idle."""
+        if self._player is None:
+            return
+        try:
+            self._player.stream_record = ""
+        except Exception:
+            pass
+
     def shutdown(self) -> None:
         """Release mpv. Call before the widget is destroyed; safe to call twice."""
         if self._player is None:
