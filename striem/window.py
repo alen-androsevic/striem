@@ -92,6 +92,7 @@ class MainWindow(QMainWindow):
             tile = CameraTile(camera, self._grid_page)
             tile.clicked.connect(self._on_tile_clicked)
             tile.audioClicked.connect(self._on_audio_clicked)
+            tile.recordingResumed.connect(self._on_recording_resumed)
             self._tiles[camera.url] = tile
         self._cameras = cameras
         self._watch_folder()
@@ -412,6 +413,11 @@ class MainWindow(QMainWindow):
     def _on_audio_clicked(self, camera: Camera) -> None:
         self._audio.toggle(camera.url)
         self._apply_audio()
+
+    def _on_recording_resumed(self, camera: Camera, name: str) -> None:
+        self.statusBar().showMessage(
+            f"{camera.name} reconnected — recording continues in {name}", 5000
+        )
 
     def _choose_folder(self) -> None:
         chosen = QFileDialog.getExistingDirectory(self, "Choose camera playlist folder", str(self._folder))

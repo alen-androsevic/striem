@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt, QSize, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import QLabel, QToolButton, QVBoxLayout, QWidget
 
+from striem.capture import recording_filename
 from striem.player import MpvWidget
 
 RECONNECT_DELAYS = (2, 4, 8, 16, 30)
@@ -27,6 +28,7 @@ def reconnect_delay(attempt: int) -> int:
 class CameraTile(QWidget):
     clicked = Signal(object)  # Camera
     audioClicked = Signal(object)  # Camera
+    recordingResumed = Signal(object, str)  # (Camera, new file name)
 
     def __init__(self, camera, parent=None):
         super().__init__(parent)
@@ -139,6 +141,16 @@ class CameraTile(QWidget):
         self._status.hide()
         self._frozen.hide()
         self._frozen_image = None
+        if self.recording and self._recording_folder is not None:
+            # Playback came back while a recording was running, so the stream
+            # dropped and reconnected. mpv overwrites its stream-record target,
+            # so resume into a NEW part rather than destroying what was already
+            # captured. On a first play `recording` is still False, so this does
+            # not fire for an ordinary start.
+            self._recording_part += 1
+            name = recording_filename(self.camera.name, self._recording_when, self._recording_part)
+            if self.video.start_recording(self._recording_folder / name):
+                self.recordingResumed.emit(self.camera, name)
 
     def _on_failed(self, _reason: str) -> None:
         self._playing = False
