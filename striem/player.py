@@ -129,7 +129,8 @@ class MpvWidget(QOpenGLWidget):
 
     def _on_frame_ready(self) -> None:
         """mpv has a new frame (GUI thread, queued from mpv's update callback)."""
-        if self.isVisible():
+        handle = self.window().windowHandle()
+        if self.isVisible() and (handle is None or handle.isExposed()):
             self.update()
         else:
             self._consume_hidden_frame()
