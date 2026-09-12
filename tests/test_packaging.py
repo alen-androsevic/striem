@@ -77,3 +77,12 @@ def test_build_script_uses_manifest_and_is_executable():
     script = ROOT / "build.sh"
     assert f"flatpak/{APP_ID}.yml" in script.read_text()
     assert os.access(script, os.X_OK)
+
+
+def test_pycache_removed_before_copy():
+    commands = module("striem")["build-commands"]
+    clean_index = next(
+        i for i, cmd in enumerate(commands) if "__pycache__" in cmd and "rm -rf" in cmd
+    )
+    copy_index = next(i for i, cmd in enumerate(commands) if cmd.startswith("cp -r striem"))
+    assert clean_index < copy_index

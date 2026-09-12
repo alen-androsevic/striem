@@ -82,6 +82,7 @@ modules:
     buildsystem: simple
     build-commands:
       - install -d ${FLATPAK_DEST}/share/striem
+      - find striem -name '__pycache__' -type d -exec rm -rf {} +
       - cp -r striem ${FLATPAK_DEST}/share/striem/
       - install -Dm755 flatpak/striem.sh ${FLATPAK_DEST}/bin/striem
       - install -Dm644 flatpak/io.github.striem.Striem.desktop -t ${FLATPAK_DEST}/share/applications
