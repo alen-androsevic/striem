@@ -1,7 +1,7 @@
 """Dev tool: run Striem on a folder, drive it with scripted steps, save screenshots.
 
 Usage: .venv/bin/python scripts/snapshot.py --folder DIR --out DIR STEP...
-Steps: wait:SECONDS  shot:NAME  focus:N  grid  audio:N  mute  state   (N is 1-based)
+Steps: wait:SECONDS  shot:NAME  focus:N  grid  audio:N  mute  state  capture  clip  record   (N is 1-based)
 """
 
 from __future__ import annotations
@@ -18,14 +18,28 @@ from striem.__main__ import create_app  # noqa: E402
 
 
 class FixedFolder:
-    def __init__(self, folder: Path):
+    def __init__(self, folder: Path, captures: Path):
         self._folder = folder
+        self._captures = captures
+        self._clip_seconds = 30
 
     def folder(self) -> Path:
         return self._folder
 
     def set_folder(self, folder: Path) -> None:
         self._folder = folder
+
+    def capture_folder(self) -> Path:
+        return self._captures
+
+    def set_capture_folder(self, folder: Path) -> None:
+        self._captures = folder
+
+    def clip_seconds(self) -> int:
+        return self._clip_seconds
+
+    def set_clip_seconds(self, seconds: int) -> None:
+        self._clip_seconds = seconds
 
 
 def main() -> int:
@@ -38,7 +52,7 @@ def main() -> int:
     app = create_app(sys.argv[:1])
     from striem.window import MainWindow
 
-    window = MainWindow(FixedFolder(args.folder))
+    window = MainWindow(FixedFolder(args.folder, args.out))
     window.show()
     args.out.mkdir(parents=True, exist_ok=True)
     steps = list(args.steps)
@@ -65,6 +79,14 @@ def main() -> int:
             window.toggle_audio_index(int(arg) - 1)
         elif command == "mute":
             window.toggle_mute()
+        elif command == "capture":
+            for path in window.capture():
+                print("captured", path, flush=True)
+        elif command == "clip":
+            for path in window.clip():
+                print("clipped", path, flush=True)
+        elif command == "record":
+            print("recording:", window.toggle_recording(), flush=True)
         elif command == "state":
             for tile in window.tiles():
                 print(

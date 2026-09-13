@@ -14,10 +14,12 @@ def test_mpv_options_match_spec():
         "vo": "libmpv",
         "profile": "low-latency",
         "rtsp_transport": "tcp",
-        "cache": "no",
+        "cache": "yes",
         "hwdec": "auto-copy-safe",
         "keep_open": "yes",
         "mute": "yes",
+        "demuxer_lavf_probe_info": "yes",
+        "demuxer_max_back_bytes": "32MiB",
     }
 
 

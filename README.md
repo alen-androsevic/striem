@@ -1,95 +1,67 @@
 # Striem
 
-Watch the RTSP camera streams listed in a folder of `.xspf` playlists — all at once in a grid, or one at a time.
+Watch your RTSP cameras side by side on Linux, and save a frame, the last 30 seconds or a recording with one key.
 
-## Install (Bazzite / any Flatpak system)
+![Four cameras in a grid](docs/screenshot.jpg)
 
-Flatpak is Linux-only; there is no macOS build path.
+## Install
 
-**Stable** — start here:
+Striem is a Flatpak, so it runs on any Linux with Flatpak (Bazzite, Fedora, Ubuntu…):
 
 ```sh
 curl -LO https://github.com/alen-androsevic/striem/releases/latest/download/striem.flatpak
 flatpak install --user striem.flatpak
 ```
 
-**Nightly** — rebuilt from `next` on every merge, for trying fixes before they are released:
+Open it from your app menu. To update, download and install the newest file the same way.
 
-```sh
-curl -LO https://github.com/alen-androsevic/striem/releases/download/nightly-rolling/striem-nightly.flatpak
-flatpak install --user striem-nightly.flatpak
-```
-
-Both channels share one app ID, so installing either replaces the other — choose a channel per machine, and switch by installing the other file. Those two URLs always point at the current build, so they are safe to bookmark.
-
-With a checkout of this repo, `./install.sh` (or `./install.sh --nightly`) does the download and install in one step.
-
-Or build it from source:
-
-```sh
-./build.sh
-```
-
-The first build downloads the KDE runtime and compiles libmpv, so it takes a while; later builds reuse the cache. Without git, fetch the source as a tarball — `refs/heads/main` pins the branch regardless of the repo's default:
-
-```sh
-curl -L https://github.com/alen-androsevic/striem/archive/refs/heads/main.tar.gz | tar xz
-cd striem-main && ./build.sh
-```
-
-To update, install a newer bundle or rebuild: either one replaces the installed copy in place. Quit Striem first, since a running instance keeps the old version alive. `flatpak update` does nothing for Striem — a locally installed app has no remote to update from.
-
-## Hand it to someone else
-
-```sh
-./build.sh --bundle
-```
-
-This writes `striem.flatpak`, a single file that needs no source checkout and no build toolchain on their machine. Build it on the architecture they run (x86_64 for a Bazzite PC) — a bundle will not install on a different one.
-
-Or let CI build it, which is the only option if you have no Linux machine.
-
-## Releasing
-
-| Channel | Trigger | Result |
-|---|---|---|
-| Nightly | Merge into `next` | Replaces the single rolling `nightly` pre-release |
-| Stable | Push a `v*` tag | New release, becomes "Latest" |
-
-```sh
-git tag v0.1.4 && git push origin v0.1.4
-```
-
-GitHub Actions builds the x86_64 bundle and attaches it, so nobody needs a Linux machine or a toolchain. Nightlies are marked as pre-releases, which is what keeps the newest stable release the one GitHub shows by default. Each release links to the other channel.
-
-Pull requests run the tests only — the six-minute Flatpak build is reserved for `next` and tags, the two places its output is actually published. Work reaches `main` only through `next`, so that tree has already been bundled and a `main` push builds nothing.
+Want fixes before they're released? Install the [nightly build](https://github.com/alen-androsevic/striem/releases/tag/nightly-rolling) instead — each replaces the other.
 
 ## Use
 
-Put your `.xspf` playlists in `~/Videos/Cameras`, or pick another folder with **Choose folder…**. The app rescans when files in the folder change.
+**Add cameras.** Put a `.xspf` playlist in `~/Videos/Cameras` for each camera. VLC can save one, or write it by hand:
 
-| Action | How |
+```xml
+<playlist version="1" xmlns="http://xspf.org/ns/0/">
+  <trackList>
+    <track><title>Front door</title><location>rtsp://192.168.1.20/stream</location></track>
+  </trackList>
+</playlist>
+```
+
+Striem notices new, changed and removed playlists while it runs.
+
+**Watch.**
+
+| Key | Does |
 |---|---|
-| Focus a camera | Click its tile, its toolbar button, or press `1`–`9` |
-| Back to the grid | `Esc`, `0`, **All**, or click the focused camera |
-| Sound | 🔇/🔊 on a tile. Only one camera plays sound at a time; focusing a camera gives it the sound, and returning to the grid silences it |
-| Mute / unmute | `M` or **Mute** |
-| Fullscreen | `F11` |
+| `1`–`9` or click | Focus a camera |
+| `Esc` or `0` | Back to the grid |
+| `M` | Mute |
+| `F11` | Fullscreen |
 
-## Develop (macOS or Linux)
+**Save.** Each key saves the focused camera, or every camera when you're in the grid. Files go to `~/Videos/Striem`.
+
+| Key | Saves |
+|---|---|
+| `S` | The current frame, as `.png` |
+| `C` | The last 30 seconds, as `.mkv` — Striem keeps them buffered |
+| `R` | A recording, until you press `R` again |
+
+The **⋮** menu changes the folders and the clip length. `flatpak run io.github.striem.Striem --help` prints this reference.
+
+## Contribute
+
+Bug reports and pull requests are welcome. You'll need libmpv (`brew install mpv`, or your distro's `mpv` package), then:
 
 ```sh
-brew install mpv ffmpeg mediamtx      # or your distro's packages
+git clone https://github.com/alen-androsevic/striem && cd striem
 python3 -m venv .venv && .venv/bin/pip install -e '.[dev]'
 .venv/bin/python -m pytest
 ```
 
-Fake cameras for manual testing:
+[CONTRIBUTING.md](CONTRIBUTING.md) covers fake cameras for testing, branches and releases.
 
-```sh
-/opt/homebrew/opt/mediamtx/bin/mediamtx /opt/homebrew/etc/mediamtx/mediamtx.yml &
-scripts/fakecams.sh &      # rtsp://127.0.0.1:8554/cam1 … cam4
-.venv/bin/python -m striem
-```
+## License
 
-`scripts/snapshot.py` drives the window with scripted steps and saves screenshots. See its docstring.
+[GPL-3.0-or-later](LICENSE)

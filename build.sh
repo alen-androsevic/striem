@@ -1,26 +1,38 @@
 #!/bin/sh
-# Build Striem as a Flatpak. Linux only (Flatpak does not exist on macOS). No sudo needed.
-#
-#   ./build.sh            build and install it for the current user
-#   ./build.sh --bundle   build and write striem.flatpak, one file to hand to someone else
-#
-# A bundle only runs on the architecture it was built on, so build it on a machine
-# matching the target (x86_64 for Bazzite on a PC).
 set -eu
+
+usage() {
+  cat <<EOF
+usage: $0 [--bundle]
+
+Build Striem as a Flatpak. Linux, no sudo.
+
+  (no option)  build and install it for this user
+  --bundle     write striem.flatpak, one file to share
+  -h, --help   show this help
+
+A bundle only installs on the CPU architecture it was built on.
+EOF
+}
+
+mode=${1-}
+case "$mode" in
+  '' | --bundle) ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+
 cd "$(dirname "$0")"
 
 APP_ID=io.github.striem.Striem
 MANIFEST=flatpak/io.github.striem.Striem.yml
 FLATHUB=https://dl.flathub.org/repo/flathub.flatpakrepo
-
-mode=${1-}
-case "$mode" in
-  '' | --bundle) ;;
-  *)
-    echo "usage: $0 [--bundle]" >&2
-    exit 2
-    ;;
-esac
 
 flatpak remote-add --user --if-not-exists flathub "$FLATHUB"
 

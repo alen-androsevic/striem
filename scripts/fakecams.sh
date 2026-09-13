@@ -1,9 +1,20 @@
 #!/bin/sh
-# Publish fake RTSP cameras to a local mediamtx on :8554.
-# Usage: scripts/fakecams.sh [cam1 cam2 ...]   (default: cam1..cam4)
-# Start mediamtx first:
-#   /opt/homebrew/opt/mediamtx/bin/mediamtx /opt/homebrew/etc/mediamtx/mediamtx.yml
 set -u
+
+case ${1-} in
+  -h | --help)
+    cat <<EOF
+usage: $0 [cam1 cam2 ...]
+
+Publish fake RTSP cameras to rtsp://127.0.0.1:8554/<name>. Default: cam1 to cam4.
+
+Start the server first:
+  mediamtx scripts/mediamtx.yml &
+EOF
+    exit 0
+    ;;
+esac
+
 src() {
   case "$1" in
     cam1) echo "testsrc=size=640x360:rate=25" ;;  # shows a running frame counter

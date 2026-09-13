@@ -1,11 +1,18 @@
 #!/bin/sh
-# Download Striem and install it for the current user. Linux only, no sudo.
-#
-#   ./install.sh             the stable release
-#   ./install.sh --nightly   the rolling build from next, fixes included early
-#
-# Quit Striem first if it is running: a live instance keeps the old version.
 set -eu
+
+usage() {
+  cat <<EOF
+usage: $0 [--nightly]
+
+Download Striem and install it for this user. Linux, no sudo.
+
+  --nightly    the rolling build from next, instead of the stable release
+  -h, --help   show this help
+
+Quit Striem first: a running copy keeps the old version.
+EOF
+}
 
 RELEASES=https://github.com/alen-androsevic/striem/releases
 
@@ -18,8 +25,12 @@ case ${1-} in
     file=striem-nightly.flatpak
     url=$RELEASES/download/nightly-rolling/striem-nightly.flatpak
     ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
   *)
-    echo "usage: $0 [--nightly]" >&2
+    usage >&2
     exit 2
     ;;
 esac

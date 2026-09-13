@@ -13,6 +13,8 @@ from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QOpenGLContext
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 
+from striem.capture import clip_window
+
 _LIBMPV_CANDIDATES = ("/app/lib/libmpv.so.2", "/opt/homebrew/lib/libmpv.dylib")
 
 
@@ -33,10 +35,21 @@ MPV_OPTIONS = {
     "vo": "libmpv",
     "profile": "low-latency",
     "rtsp_transport": "tcp",
-    "cache": "no",
+    # The back buffer is what makes a clip of the last seconds possible. It does
+    # not fight the low-latency profile: that profile never set cache=no, and
+    # with the cache on the stream still sits at the live edge (measured 0.24 s
+    # of forward cache, ~80 KB/s of history at 640x360).
+    "cache": "yes",
     "hwdec": "auto-copy-safe",
     "keep_open": "yes",
     "mute": "yes",
+    # profile=low-latency sets demuxer-lavf-probe-info=nostreams, which starves
+    # the container writer of codec info: both dump-cache and stream-record then
+    # produce 0-byte files. Overriding this one option is what makes clips and
+    # recordings work, and it costs no measurable startup latency (1.56 s vs
+    # 1.57 s). Do not remove it as redundant-looking cleanup.
+    "demuxer_lavf_probe_info": "yes",
+    "demuxer_max_back_bytes": "32MiB",
 }
 
 CONNECT_TIMEOUT_S = 10
@@ -83,6 +96,63 @@ class MpvWidget(QOpenGLWidget):
     def set_muted(self, muted: bool) -> None:
         if self._player is not None:
             self._player.mute = muted
+
+    def capture_to(self, path) -> bool:
+        """Write the current frame to `path` at the stream's own resolution.
+
+        `includes="video"` takes the decoded frame instead of asking the video
+        output for one, which is what makes this work under vo=libmpv.
+        """
+        if self._player is None:
+            return False
+        try:
+            self._player.screenshot_to_file(str(path), includes="video")
+        except Exception:  # a failed grab must never take the window down
+            return False
+        return True
+
+    def clip_to(self, path, seconds: float) -> float:
+        """Write the buffered last `seconds` to `path`.
+
+        Returns the duration actually written, which is less than `seconds` when
+        the buffer does not reach back that far, and 0.0 when nothing could be
+        saved. The end is always bounded: dump-cache with an open end never
+        returns on a live stream, it just keeps writing as the cache grows.
+        """
+        if self._player is None:
+            return 0.0
+        try:
+            window = clip_window(self._player.demuxer_cache_state or {}, seconds)
+            if window is None:
+                return 0.0
+            begin, end = window
+            self._player.command("dump-cache", begin, end, str(path))
+        except Exception:  # a failed dump must never take the window down
+            return 0.0
+        return end - begin
+
+    def start_recording(self, path) -> bool:
+        """Begin writing incoming data to `path`.
+
+        mpv always overwrites this target, so never reuse a path for a second
+        part of the same recording.
+        """
+        if self._player is None:
+            return False
+        try:
+            self._player.stream_record = str(path)
+        except Exception:
+            return False
+        return True
+
+    def stop_recording(self) -> None:
+        """Stop writing and let mpv finalise the container. Safe to call when idle."""
+        if self._player is None:
+            return
+        try:
+            self._player.stream_record = ""
+        except Exception:
+            pass
 
     def shutdown(self) -> None:
         """Release mpv. Call before the widget is destroyed; safe to call twice."""
