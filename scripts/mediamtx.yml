@@ -1,0 +1,3 @@
+# A local RTSP server for scripts/fakecams.sh: accept a stream on any path.
+paths:
+  all_others:
