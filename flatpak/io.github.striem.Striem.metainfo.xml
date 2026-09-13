@@ -4,8 +4,10 @@
   <name>Striem</name>
   <summary>Watch your home camera streams</summary>
   <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
   <description>
     <p>Reads the .xspf playlists in a folder and shows their RTSP camera streams in a grid or one at a time.</p>
+    <p>Save the current frame, the last 30 seconds or a recording from any camera with one key.</p>
   </description>
   <launchable type="desktop-id">io.github.striem.Striem.desktop</launchable>
   <releases>
